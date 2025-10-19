@@ -147,23 +147,29 @@ class LOINCMapper {
 
   /// Fuzzy match parameter name to standard names
   static String _fuzzyMatch(String input) {
-    final List<String> knownParameters = _parameterMap.values.toSet().toList();
+    try {
+      final List<String> knownParameters =
+          _parameterMap.values.toSet().toList();
 
-    // Use fuzzy matching with 85% similarity threshold
-    final result = extractOne(
-      query: input,
-      choices: knownParameters,
-      cutoff: 85,
-    );
+      // Use fuzzy matching with 85% similarity threshold
+      final result = extractOne(
+        query: input,
+        choices: knownParameters,
+        cutoff: 85,
+      );
 
-    // If match found with high confidence, return it
-    if (result != null && result.score >= 85) {
-      return result.choice;
+      // If match found with high confidence, return it
+      if (result != null && result.score >= 85) {
+        return result.choice;
+      }
+
+      // If no good match, return cleaned input
+      // This allows new parameters to be stored as-is
+      return input.replaceAll(' ', '_');
+    } catch (e) {
+      // If fuzzy matching fails, return cleaned input
+      return input.replaceAll(' ', '_');
     }
-
-    // If no good match, return cleaned input
-    // This allows new parameters to be stored as-is
-    return input.replaceAll(' ', '_');
   }
 
   /// Get all standard parameter names

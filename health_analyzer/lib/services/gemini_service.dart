@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -20,7 +21,13 @@ class GeminiService {
       throw Exception('Gemini API key not found. Please set it in settings.');
     }
 
-    _model = GenerativeModel(model: 'gemini-1.5-pro', apiKey: apiKey);
+    // Get selected model from storage, default to gemini-2.5-flash
+    final selectedModel = await _secureStorage.read(
+          key: 'selected_gemini_model',
+        ) ??
+        'gemini-2.5-flash';
+
+    _model = GenerativeModel(model: selectedModel, apiKey: apiKey);
   }
 
   /// Set API key in secure storage
@@ -52,7 +59,7 @@ class GeminiService {
         content,
         generationConfig: GenerationConfig(
           temperature: 0.1, // Low temperature for consistent output
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096, // Increased token limit
         ),
       );
 
@@ -61,15 +68,23 @@ class GeminiService {
         throw Exception('No data extracted from the report');
       }
 
-      // Parse JSON from response
+      debugPrint('🔍 Raw Gemini Response:');
+      debugPrint(extractedText);
+
+      // Parse JSON from response with better error handling
       final jsonData = _parseJsonFromResponse(extractedText);
 
       // Normalize parameter names
       final normalizedData = _normalizeParameters(jsonData);
 
       return normalizedData;
+    } on FormatException catch (e) {
+      debugPrint('❌ JSON Parse Error: $e');
+      throw Exception(
+          'Failed to parse data from report. The AI response was incomplete. Please try again with a clearer image.');
     } catch (e) {
-      throw Exception('Failed to extract data from report: $e');
+      debugPrint('❌ Extraction Error: $e');
+      throw Exception('Failed to extract data from report: ${e.toString()}');
     }
   }
 
@@ -130,44 +145,88 @@ Return ONLY the JSON, nothing else.
 
   /// Parse JSON from Gemini response
   Map<String, dynamic> _parseJsonFromResponse(String response) {
+    debugPrint('📝 Parsing JSON from response (length: ${response.length})');
+
     // Remove markdown code blocks if present
-    String cleaned = response
-        .replaceAll('```json', '')
-        .replaceAll('```', '')
-        .trim();
+    String cleaned =
+        response.replaceAll('```json', '').replaceAll('```', '').trim();
+
+    // Remove any text before the first {
+    final firstBrace = cleaned.indexOf('{');
+    if (firstBrace > 0) {
+      cleaned = cleaned.substring(firstBrace);
+    }
+
+    // Remove any text after the last }
+    final lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace > 0 && lastBrace < cleaned.length - 1) {
+      cleaned = cleaned.substring(0, lastBrace + 1);
+    }
+
+    debugPrint(
+        '🧹 Cleaned JSON (first 200 chars): ${cleaned.substring(0, cleaned.length < 200 ? cleaned.length : 200)}');
 
     try {
-      return json.decode(cleaned);
-    } catch (e) {
-      // Try to find JSON in the response
-      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(cleaned);
+      final decoded = json.decode(cleaned);
+      debugPrint('✅ Successfully parsed JSON');
+      return decoded;
+    } on FormatException catch (e) {
+      debugPrint('❌ JSON Parse Error: $e');
+      debugPrint('📄 Problematic JSON:\n$cleaned');
+
+      // Try to find and extract complete JSON object
+      final jsonMatch =
+          RegExp(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}').firstMatch(cleaned);
       if (jsonMatch != null) {
-        return json.decode(jsonMatch.group(0)!);
+        try {
+          debugPrint('🔄 Trying to parse extracted JSON...');
+          return json.decode(jsonMatch.group(0)!);
+        } catch (e2) {
+          debugPrint('❌ Extracted JSON also failed: $e2');
+        }
       }
-      throw Exception('Could not parse JSON from response: $e');
+
+      throw FormatException(
+          'Could not parse JSON from AI response. Response may be incomplete.');
     }
   }
 
   /// Normalize parameter names using LOINC mapper
   Map<String, dynamic> _normalizeParameters(Map<String, dynamic> data) {
-    final parameters = data['parameters'] as Map<String, dynamic>? ?? {};
-    final normalizedParams = <String, dynamic>{};
+    try {
+      debugPrint('🔄 Normalizing parameters...');
+      final parameters = data['parameters'] as Map<String, dynamic>? ?? {};
+      final normalizedParams = <String, dynamic>{};
 
-    parameters.forEach((key, value) {
-      final normalizedKey = LOINCMapper.normalize(key);
-      normalizedParams[normalizedKey] = value;
+      parameters.forEach((key, value) {
+        try {
+          debugPrint('  Processing parameter: $key');
+          final normalizedKey = LOINCMapper.normalize(key);
+          debugPrint('    Normalized to: $normalizedKey');
+          normalizedParams[normalizedKey] = value;
 
-      // Ensure raw_name is preserved
-      if (value is Map && !value.containsKey('raw_name')) {
-        value['raw_name'] = key;
-      }
-    });
+          // Ensure raw_name is preserved
+          if (value is Map && !value.containsKey('raw_name')) {
+            value['raw_name'] = key;
+          }
+        } catch (e) {
+          debugPrint('    ❌ Error normalizing $key: $e');
+          // Skip this parameter if normalization fails
+        }
+      });
 
-    return {
-      'test_date': data['test_date'],
-      'lab_name': data['lab_name'],
-      'parameters': normalizedParams,
-    };
+      debugPrint(
+          '✅ Normalization complete. ${normalizedParams.length} parameters processed.');
+
+      return {
+        'test_date': data['test_date'],
+        'lab_name': data['lab_name'],
+        'parameters': normalizedParams,
+      };
+    } catch (e) {
+      debugPrint('❌ Error in _normalizeParameters: $e');
+      rethrow;
+    }
   }
 
   /// Get MIME type from file path

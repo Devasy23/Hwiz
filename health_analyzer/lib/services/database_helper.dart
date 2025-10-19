@@ -35,12 +35,19 @@ class DatabaseHelper {
       version: AppConstants.databaseVersion,
       onCreate: _createDatabase,
       onConfigure: _onConfigure,
+      onUpgrade: _onUpgrade,
     );
   }
 
   /// Enable foreign keys
   Future<void> _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
+  }
+
+  /// Upgrade database schema
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Add migration logic here if needed in the future
+    // For now, we're on version 1
   }
 
   /// Create database tables
@@ -203,6 +210,24 @@ class DatabaseHelper {
       AppConstants.tableReports,
       where: 'profile_id = ?',
       whereArgs: [profileId],
+      orderBy: 'test_date DESC',
+    );
+
+    List<BloodReport> reports = [];
+    for (var reportMap in reportMaps) {
+      final report = BloodReport.fromMap(reportMap);
+      final parameters = await getParametersByReport(report.id!);
+      reports.add(report.copyWith(parameters: parameters));
+    }
+
+    return reports;
+  }
+
+  /// Get all reports across all profiles
+  Future<List<BloodReport>> getAllReports() async {
+    final db = await database;
+    final List<Map<String, dynamic>> reportMaps = await db.query(
+      AppConstants.tableReports,
       orderBy: 'test_date DESC',
     );
 

@@ -21,8 +21,8 @@ dependencies:
   google_generative_ai: ^0.2.2
   
   # File Picking
-  image_picker: ^1.0.5
-  file_picker: ^6.1.1
+  image_picker: ^1.1.2
+  file_picker: ^8.1.4
   
   # Charts
   fl_chart: ^0.65.0
@@ -36,8 +36,11 @@ dependencies:
   # Secure Storage
   flutter_secure_storage: ^9.0.0
   
+  # HTTP Client
+  http: ^1.2.0
+  
   # Fuzzy Matching
-  fuzzywuzzy: ^2.0.1
+  fuzzywuzzy: ^1.2.0
   
   # UI Components
   cupertino_icons: ^1.0.6
