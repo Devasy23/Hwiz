@@ -1,7 +1,7 @@
 # PDF Viewer Implementation
 
 ## Overview
-Added full PDF preview functionality to the Health Analyzer app, allowing users to view their scanned PDF blood reports directly within the app.
+Added full PDF preview functionality to the LabLens app, allowing users to view their scanned PDF blood reports directly within the app.
 
 ## Changes Made
 

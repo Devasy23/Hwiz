@@ -1,5 +1,5 @@
 name: health_analyzer
-description: A Flutter app to analyze and track blood report trends over time
+description: LabLens - Your Family's Health, Tracked & Analyzed
 version: 1.0.0+1
 
 environment:

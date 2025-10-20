@@ -2,7 +2,7 @@
 
 ## 📊 Quick Start Guide
 
-There are **two ways** to view trend charts in the Health Analyzer app:
+There are **two ways** to view trend charts in the LabLens app:
 
 ---
 

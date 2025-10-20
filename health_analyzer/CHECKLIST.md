@@ -1,6 +1,6 @@
 # Implementation Checklist
 
-Use this checklist to track your progress as you build the Health Analyzer app.
+Use this checklist to track your progress as you build the LabLens app.
 
 ## ✅ Phase 0: Foundation (COMPLETED)
 

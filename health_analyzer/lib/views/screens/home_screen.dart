@@ -58,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return CustomScrollView(
       slivers: [
         SliverAppBar.large(
-          title: const Text('Health Analyzer'),
+          title: const Text('LabLens'),
           floating: true,
         ),
         if (!hasProfiles)
@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Welcome to Health Analyzer',
+              'Welcome to LabLens',
               style: Theme.of(context).textTheme.headlineMedium,
               textAlign: TextAlign.center,
             ),

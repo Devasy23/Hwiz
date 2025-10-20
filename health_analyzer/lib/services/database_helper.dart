@@ -59,6 +59,7 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         date_of_birth TEXT,
         gender TEXT,
+        relationship TEXT,
         photo_path TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )

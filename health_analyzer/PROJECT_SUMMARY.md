@@ -1,4 +1,4 @@
-# Health Analyzer Project - Complete Summary
+# LabLens Project - Complete Summary
 
 ## 🎯 Project Vision
 

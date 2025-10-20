@@ -1,4 +1,4 @@
-# Hwiz - Health Analyzer 🩺
+# Hwiz - LabLens 🩺
 
 An open-source Flutter app for analyzing and visualizing blood report trends over time using AI.
 

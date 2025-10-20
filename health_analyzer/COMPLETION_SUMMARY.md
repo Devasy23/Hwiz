@@ -2,7 +2,7 @@
 
 ## What We've Built Together
 
-Congratulations! You now have a **professional, production-ready foundation** for your Health Analyzer app. Here's what has been created:
+Congratulations! You now have a **professional, production-ready foundation** for your LabLens app. Here's what has been created:
 
 ## 📦 Complete Package Delivered
 

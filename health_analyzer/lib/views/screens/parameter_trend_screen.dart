@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../services/database_helper.dart';
+import '../../services/gemini_service.dart';
+import '../../theme/app_theme.dart';
 
 /// Screen to display parameter trends over time
 class ParameterTrendScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class ParameterTrendScreen extends StatefulWidget {
 
 class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+  final GeminiService _geminiService = GeminiService();
 
   List<String> _availableParameters = [];
   String? _selectedParameter;
@@ -29,6 +32,11 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
   bool _isLoading = true;
   bool _showReferenceRange = true;
   String _selectedTimeRange = 'all'; // all, 1year, 6months, 3months
+
+  // AI trend analysis state
+  String? _trendAnalysis;
+  bool _loadingAnalysis = false;
+  String? _analysisError;
 
   @override
   void initState() {
@@ -135,6 +143,33 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
     }).toList();
   }
 
+  bool get _hasAbnormalValues {
+    if (_trendData.isEmpty) return false;
+
+    return _trendData.any((data) {
+      final value = (data['parameter_value'] as num).toDouble();
+      final refMin = data['reference_range_min'] as double?;
+      final refMax = data['reference_range_max'] as double?;
+
+      if (refMin == null || refMax == null) return false;
+      return value < refMin || value > refMax;
+    });
+  }
+
+  String? get _currentStatus {
+    if (_trendData.isEmpty) return null;
+
+    final latest = _trendData.last;
+    final value = (latest['parameter_value'] as num).toDouble();
+    final refMin = latest['reference_range_min'] as double?;
+    final refMax = latest['reference_range_max'] as double?;
+
+    if (refMin == null || refMax == null) return null;
+    if (value < refMin) return 'low';
+    if (value > refMax) return 'high';
+    return 'normal';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,6 +177,13 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
         title: Text('${widget.profileName}\'s Trends'),
         centerTitle: true,
         actions: [
+          // AI Trend Analysis button (only show if there are abnormal values)
+          if (_hasAbnormalValues && _trendData.length >= 2)
+            IconButton(
+              icon: const Icon(Icons.auto_awesome),
+              onPressed: _showTrendAnalysisSheet,
+              tooltip: 'Get AI Trend Analysis',
+            ),
           IconButton(
             icon: Icon(_showReferenceRange ? Icons.grid_on : Icons.grid_off),
             onPressed: () {
@@ -674,5 +716,399 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
         .split('_')
         .map((word) => word[0].toUpperCase() + word.substring(1))
         .join(' ');
+  }
+
+  Future<void> _loadTrendAnalysis() async {
+    if (_selectedParameter == null || _trendData.isEmpty) return;
+
+    setState(() {
+      _loadingAnalysis = true;
+      _analysisError = null;
+    });
+
+    try {
+      // Prepare historical data
+      final historicalData = _trendData.map((data) {
+        return {
+          'date': DateFormat('yyyy-MM-dd').format(
+            DateTime.parse(data['test_date'] as String),
+          ),
+          'value': (data['parameter_value'] as num).toDouble(),
+          'unit': data['unit'] as String? ?? '',
+        };
+      }).toList();
+
+      final analysis = await _geminiService.generateTrendAnalysis(
+        parameterName: _formatParameterName(_selectedParameter!),
+        historicalData: historicalData,
+        currentStatus: _currentStatus,
+      );
+
+      setState(() {
+        _trendAnalysis = analysis;
+        _loadingAnalysis = false;
+      });
+    } catch (e) {
+      setState(() {
+        _analysisError = e.toString();
+        _loadingAnalysis = false;
+      });
+    }
+  }
+
+  void _showTrendAnalysisSheet() {
+    // Load analysis if not already loaded
+    if (_trendAnalysis == null && !_loadingAnalysis) {
+      _loadTrendAnalysis();
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(AppTheme.radiusLarge),
+                topRight: Radius.circular(AppTheme.radiusLarge),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.insights,
+                        color: AppTheme.infoColor,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'AI Trend Analysis',
+                              style: AppTheme.titleLarge.copyWith(
+                                color: AppTheme.infoColor,
+                              ),
+                            ),
+                            Text(
+                              _formatParameterName(_selectedParameter ?? ''),
+                              style: AppTheme.bodySmall.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_trendAnalysis != null)
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 20),
+                          onPressed: () {
+                            setState(() {
+                              _trendAnalysis = null;
+                            });
+                            _loadTrendAnalysis();
+                          },
+                          tooltip: 'Regenerate analysis',
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Divider(height: 1),
+
+                // Content
+                Expanded(
+                  child: StatefulBuilder(
+                    builder: (context, setModalState) {
+                      if (_loadingAnalysis) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Analyzing trend pattern...',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (_analysisError != null) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppTheme.errorColor,
+                                  size: 64,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Failed to generate analysis',
+                                  style: AppTheme.titleMedium,
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _analysisError!.contains('API key')
+                                      ? 'Please check your Gemini API key in settings'
+                                      : 'Please try again later',
+                                  style: AppTheme.bodySmall.copyWith(
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _analysisError = null;
+                                    });
+                                    _loadTrendAnalysis();
+                                  },
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (_trendAnalysis != null) {
+                        return SingleChildScrollView(
+                          controller: scrollController,
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Analysis content - formatted
+                              _buildFormattedAnalysis(_trendAnalysis!),
+                              const SizedBox(height: 24),
+
+                              // Disclaimer
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.warningLight,
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusMedium,
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.info_outline,
+                                      size: 20,
+                                      color: AppTheme.warningColor,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'This is AI-generated information for educational purposes only. Always consult qualified healthcare professionals for medical advice.',
+                                        style: AppTheme.bodySmall.copyWith(
+                                          color: AppTheme.warningColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return Center(
+                        child: TextButton.icon(
+                          onPressed: _loadTrendAnalysis,
+                          icon: const Icon(Icons.auto_awesome),
+                          label: const Text('Generate Analysis'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFormattedAnalysis(String text) {
+    final List<Widget> widgets = [];
+    final lines = text.split('\n');
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      if (line.trim().isEmpty) {
+        widgets.add(const SizedBox(height: 8));
+        continue;
+      }
+
+      // Check for section headers (bold text followed by colon)
+      if (line.contains('**') && line.contains(':')) {
+        final headerMatch = RegExp(r'\*\*(.+?)\*\*').firstMatch(line);
+        if (headerMatch != null) {
+          final headerText = headerMatch.group(1)!;
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 8),
+              child: Text(
+                headerText,
+                style: AppTheme.titleMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ),
+          );
+          continue;
+        }
+      }
+
+      // Check for bullet points (including with leading spaces)
+      final trimmedLine = line.trimLeft();
+      if (trimmedLine.startsWith('*   ') ||
+          trimmedLine.startsWith('* ') ||
+          trimmedLine.startsWith('-   ') ||
+          trimmedLine.startsWith('- ') ||
+          trimmedLine.startsWith('•   ') ||
+          trimmedLine.startsWith('• ')) {
+        // Extract the bullet text, removing the bullet marker
+        String bulletText =
+            trimmedLine.substring(trimmedLine.indexOf('*') + 1).trim();
+        if (trimmedLine.startsWith('-')) {
+          bulletText =
+              trimmedLine.substring(trimmedLine.indexOf('-') + 1).trim();
+        } else if (trimmedLine.startsWith('•')) {
+          bulletText =
+              trimmedLine.substring(trimmedLine.indexOf('•') + 1).trim();
+        }
+
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 8, top: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Text('• ', style: TextStyle(fontSize: 16)),
+                ),
+                Expanded(
+                  child: _buildRichText(bulletText),
+                ),
+              ],
+            ),
+          ),
+        );
+        continue;
+      }
+
+      // Regular paragraph text
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _buildRichText(line),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  Widget _buildRichText(String text) {
+    final List<TextSpan> spans = [];
+    final regex = RegExp(r'\*\*(.+?)\*\*');
+    int lastIndex = 0;
+
+    for (final match in regex.allMatches(text)) {
+      // Add normal text before the bold text
+      if (match.start > lastIndex) {
+        spans.add(
+          TextSpan(
+            text: text.substring(lastIndex, match.start),
+            style: AppTheme.bodyMedium.copyWith(height: 1.6),
+          ),
+        );
+      }
+
+      // Add bold text
+      spans.add(
+        TextSpan(
+          text: match.group(1),
+          style: AppTheme.bodyMedium.copyWith(
+            fontWeight: FontWeight.bold,
+            height: 1.6,
+          ),
+        ),
+      );
+
+      lastIndex = match.end;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      spans.add(
+        TextSpan(
+          text: text.substring(lastIndex),
+          style: AppTheme.bodyMedium.copyWith(height: 1.6),
+        ),
+      );
+    }
+
+    return RichText(
+      text: TextSpan(
+        children: spans.isEmpty
+            ? [
+                TextSpan(
+                    text: text,
+                    style: AppTheme.bodyMedium.copyWith(height: 1.6))
+              ]
+            : spans,
+      ),
+    );
   }
 }

@@ -1,4 +1,4 @@
-# Health Analyzer - UX/UI Review & Enhancement Recommendations
+# LabLens - UX/UI Review & Enhancement Recommendations
 
 **Date:** October 20, 2025  
 **Version:** 1.0 (Basic Working Release)  
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The Health Analyzer app has a solid foundation with clear navigation and feature separation. However, there are significant opportunities to **reduce friction**, **eliminate redundant steps**, and **create a more intuitive flow** that feels "well thought out" rather than just functional.
+The LabLens app has a solid foundation with clear navigation and feature separation. However, there are significant opportunities to **reduce friction**, **eliminate redundant steps**, and **create a more intuitive flow** that feels "well thought out" rather than just functional.
 
 ### Key Findings:
 - ✅ **Strengths:** Clear visual hierarchy, Material 3 design, good use of cards and empty states
@@ -290,7 +290,7 @@ TOTAL: 1 click
 ### Home Screen Redesign
 ```
 ┌─────────────────────────────────────┐
-│  Health Analyzer          [Profile] │ ← Quick profile switcher
+│  LabLens          [Profile] │ ← Quick profile switcher
 ├─────────────────────────────────────┤
 │                                     │
 │  👤 John's Health Summary           │ ← Current profile context

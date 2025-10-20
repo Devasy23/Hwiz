@@ -1,8 +1,8 @@
-# Health Analyzer - Implementation Guide
+# LabLens - Implementation Guide
 
 ## 🎯 Project Overview
 
-This document provides a complete implementation guide for the Health Analyzer app - a Flutter application that uses AI to analyze blood reports and track health trends over time.
+This document provides a complete implementation guide for the LabLens app - a Flutter application that uses AI to analyze blood reports and track health trends over time.
 
 ## 📂 Project Structure Created
 
@@ -348,7 +348,7 @@ test('Parameter normalization', () {
 ```dart
 testWidgets('Home screen shows profiles', (tester) async {
   await tester.pumpWidget(MyApp());
-  expect(find.text('Health Analyzer'), findsOneWidget);
+  expect(find.text('LabLens'), findsOneWidget);
 });
 ```
 

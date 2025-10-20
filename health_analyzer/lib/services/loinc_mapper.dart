@@ -159,7 +159,7 @@ class LOINCMapper {
       );
 
       // If match found with high confidence, return it
-      if (result != null && result.score >= 85) {
+      if (result.score >= 85) {
         return result.choice;
       }
 

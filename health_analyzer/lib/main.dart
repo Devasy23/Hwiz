@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'theme/app_theme.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/profile_viewmodel.dart';
 import 'viewmodels/report_viewmodel.dart';
-import 'views/screens/home_screen.dart';
+import 'views/screens/main_shell.dart';
 
 void main() {
-  runApp(const HealthAnalyzerApp());
+  runApp(const LabLensApp());
 }
 
-class HealthAnalyzerApp extends StatelessWidget {
-  const HealthAnalyzerApp({super.key});
+class LabLensApp extends StatelessWidget {
+  const LabLensApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,23 +22,12 @@ class HealthAnalyzerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ReportViewModel()),
       ],
       child: MaterialApp(
-        title: 'Health Analyzer',
+        title: 'LabLens',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          cardTheme: CardThemeData(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
-        ),
-        home: const HomeScreen(),
+        theme: AppTheme.lightTheme(),
+        darkTheme: AppTheme.darkTheme(),
+        themeMode: ThemeMode.system,
+        home: const MainShell(),
       ),
     );
   }
