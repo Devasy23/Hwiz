@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/blood_report.dart';
 import '../../models/parameter.dart';
 import '../../widgets/common/status_badge.dart';
 import '../../widgets/common/profile_avatar.dart';
 import '../../services/gemini_service.dart';
+import '../../viewmodels/report_viewmodel.dart';
 import 'parameter_trend_screen.dart';
+import 'dart:io';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 /// Report details screen with grouped parameters
 class ReportDetailsScreen extends StatefulWidget {
@@ -925,8 +929,20 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 leading: const Icon(Icons.image),
                 title: const Text('View Report Image'),
                 onTap: () {
+                  debugPrint('🖼️ View Report Image tapped from bottom sheet');
+                  debugPrint(
+                      '  Report Image Path: ${widget.report.reportImagePath}');
                   Navigator.pop(context);
-                  // TODO: Show image viewer
+                  if (widget.report.reportImagePath != null) {
+                    _showReportImage();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No image attached to this report'),
+                        backgroundColor: AppTheme.errorColor,
+                      ),
+                    );
+                  }
                 },
               ),
               ListTile(
@@ -970,10 +986,42 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context); // Go back to previous screen
-                // TODO: Delete report from database
+              onPressed: () async {
+                debugPrint(
+                    '🗑️ Delete button pressed for report ${widget.report.id}');
+                Navigator.pop(context); // Close dialog
+
+                final viewModel = context.read<ReportViewModel>();
+                debugPrint('  Calling deleteReport...');
+                final success = await viewModel.deleteReport(widget.report.id!);
+
+                if (success && mounted) {
+                  debugPrint('  ✅ Report deleted successfully');
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Report deleted successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  // Go back to report list
+                  Navigator.pop(context);
+
+                  // Reload reports for the profile
+                  debugPrint(
+                      '  🔄 Reloading reports for profile ${widget.report.profileId}');
+                  await viewModel
+                      .loadReportsForProfile(widget.report.profileId);
+                } else if (mounted) {
+                  debugPrint('  ❌ Failed to delete report: ${viewModel.error}');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text(viewModel.error ?? 'Failed to delete report'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.errorColor,
@@ -983,6 +1031,28 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           ],
         );
       },
+    );
+  }
+
+  /// Show the report image in a full-screen viewer
+  void _showReportImage() {
+    final imagePath = widget.report.reportImagePath!;
+    final isPDF = imagePath.toLowerCase().endsWith('.pdf');
+
+    debugPrint('🖼️ Opening report image viewer');
+    debugPrint('  Path: $imagePath');
+    debugPrint('  Is PDF: $isPDF');
+    debugPrint('  File exists: ${File(imagePath).existsSync()}');
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _ReportImageViewer(
+          imagePath: imagePath,
+          isPDF: isPDF,
+          reportDate: widget.report.testDate,
+        ),
+      ),
     );
   }
 
@@ -1014,5 +1084,120 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             ? ''
             : word[0].toUpperCase() + word.substring(1).toLowerCase())
         .join(' ');
+  }
+}
+
+/// Full-screen image/PDF viewer widget
+class _ReportImageViewer extends StatelessWidget {
+  final String imagePath;
+  final bool isPDF;
+  final DateTime reportDate;
+
+  const _ReportImageViewer({
+    required this.imagePath,
+    required this.isPDF,
+    required this.reportDate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final file = File(imagePath);
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(_formatDate(reportDate)),
+      ),
+      body: FutureBuilder<bool>(
+        future: file.exists(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          }
+
+          if (snapshot.hasError || !snapshot.hasData || !snapshot.data!) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline,
+                      color: Colors.white, size: 64),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Image file not found',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    imagePath,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Go Back'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (isPDF) {
+            return SfPdfViewer.file(file);
+          }
+
+          return InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.file(
+                file,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('❌ Error loading image: $error');
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.broken_image, color: Colors.white, size: 64),
+                        SizedBox(height: 16),
+                        Text(
+                          'Failed to load image',
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

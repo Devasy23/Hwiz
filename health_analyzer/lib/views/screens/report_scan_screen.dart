@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/profile_viewmodel.dart';
-import '../../services/document_picker_service.dart';
+import '../../viewmodels/report_viewmodel.dart';
 import '../../widgets/common/loading_indicator.dart';
 
 /// Screen for scanning/uploading reports
@@ -14,26 +14,35 @@ class ReportScanScreen extends StatefulWidget {
 }
 
 class _ReportScanScreenState extends State<ReportScanScreen> {
-  final DocumentPickerService _documentPicker = DocumentPickerService();
   bool _isProcessing = false;
   double? _processingProgress;
 
   Future<void> _handleCamera() async {
+    final profileVM = context.read<ProfileViewModel>();
+    final profile = profileVM.currentProfile;
+
+    if (profile == null) {
+      _showError('Please select a profile first');
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _processingProgress = null;
     });
 
     try {
-      // TODO: Implement camera capture
-      await Future.delayed(const Duration(seconds: 2));
+      final reportViewModel = context.read<ReportViewModel>();
+      final success = await reportViewModel.scanFromCamera(profile.id!);
 
-      if (mounted) {
+      if (success && mounted) {
         Navigator.of(context).pop();
-        // TODO: Navigate to report details
+        _showSuccess('Report scanned successfully!');
+      } else if (mounted && reportViewModel.error != null) {
+        _showError(reportViewModel.error!);
       }
     } catch (e) {
-      _showError('Failed to capture image');
+      _showError('Failed to capture image: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -44,21 +53,31 @@ class _ReportScanScreenState extends State<ReportScanScreen> {
   }
 
   Future<void> _handleGallery() async {
+    final profileVM = context.read<ProfileViewModel>();
+    final profile = profileVM.currentProfile;
+
+    if (profile == null) {
+      _showError('Please select a profile first');
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _processingProgress = null;
     });
 
     try {
-      // TODO: Implement gallery picker
-      await Future.delayed(const Duration(seconds: 2));
+      final reportViewModel = context.read<ReportViewModel>();
+      final success = await reportViewModel.scanFromGallery(profile.id!);
 
-      if (mounted) {
+      if (success && mounted) {
         Navigator.of(context).pop();
-        // TODO: Navigate to report details
+        _showSuccess('Report scanned successfully!');
+      } else if (mounted && reportViewModel.error != null) {
+        _showError(reportViewModel.error!);
       }
     } catch (e) {
-      _showError('Failed to pick image');
+      _showError('Failed to pick image: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -69,35 +88,52 @@ class _ReportScanScreenState extends State<ReportScanScreen> {
   }
 
   Future<void> _handlePdf() async {
+    final profileVM = context.read<ProfileViewModel>();
+    final profile = profileVM.currentProfile;
+
+    if (profile == null) {
+      _showError('Please select a profile first');
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _processingProgress = null;
     });
 
     try {
-      final result = await _documentPicker.pickDocument();
+      final reportViewModel = context.read<ReportViewModel>();
+      final success = await reportViewModel.scanFromPDF(profile.id!);
 
-      if (result != null) {
-        // TODO: Process PDF
-        await Future.delayed(const Duration(seconds: 2));
-
-        if (mounted) {
-          Navigator.of(context).pop();
-          // TODO: Navigate to report details
-        }
-      } else {
+      if (success && mounted) {
+        Navigator.of(context).pop();
+        _showSuccess('Report scanned successfully!');
+      } else if (mounted && reportViewModel.error != null) {
+        _showError(reportViewModel.error!);
         setState(() {
           _isProcessing = false;
         });
       }
     } catch (e) {
-      _showError('Failed to process PDF');
+      _showError('Failed to process PDF: $e');
     } finally {
       if (mounted) {
         setState(() {
           _isProcessing = false;
         });
       }
+    }
+  }
+
+  void _showSuccess(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

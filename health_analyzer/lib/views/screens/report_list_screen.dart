@@ -35,6 +35,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
   }
 
   void _loadReports() {
+    debugPrint('📊 DEBUG: Loading reports for profile ${widget.profileId}');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ReportViewModel>().loadReportsForProfile(widget.profileId);
@@ -95,9 +96,14 @@ class _ReportListScreenState extends State<ReportListScreen> {
               itemCount: viewModel.reports.length,
               itemBuilder: (context, index) {
                 final report = viewModel.reports[index];
+                debugPrint(
+                    '📄 Report #$index: ID=${report.id}, Params=${report.parameters.length}');
                 return _ReportCard(
                   report: report,
-                  onTap: () => _navigateToReportDetail(context, report),
+                  onTap: () {
+                    debugPrint('👆 Report card tapped: Report ID ${report.id}');
+                    _navigateToReportDetail(context, report);
+                  },
                   onDelete: () => _showDeleteConfirmation(context, report),
                 );
               },
@@ -143,12 +149,42 @@ class _ReportListScreenState extends State<ReportListScreen> {
   }
 
   void _navigateToReportDetail(BuildContext context, BloodReport report) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ReportDetailScreen(report: report),
-      ),
-    );
+    debugPrint('🔍 DEBUG: Attempting to navigate to report detail');
+    debugPrint('  Report ID: ${report.id}');
+    debugPrint('  Test Date: ${report.testDate}');
+    debugPrint('  Lab Name: ${report.labName}');
+    debugPrint('  Parameters Count: ${report.parameters.length}');
+    debugPrint('  Image Path: ${report.reportImagePath}');
+
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) {
+            debugPrint('✅ Building ReportDetailScreen...');
+            return ReportDetailScreen(report: report);
+          },
+        ),
+      ).then((value) {
+        debugPrint('🔙 Returned from ReportDetailScreen');
+      }).catchError((error) {
+        debugPrint('❌ Navigation error: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening report: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      });
+    } catch (e) {
+      debugPrint('❌ Exception during navigation: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to open report: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showDeleteConfirmation(BuildContext context, BloodReport report) {
@@ -168,14 +204,26 @@ class _ReportListScreenState extends State<ReportListScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              final success = await context
-                  .read<ReportViewModel>()
-                  .deleteReport(report.id!);
-              if (success && context.mounted) {
+              final viewModel = context.read<ReportViewModel>();
+              final success = await viewModel.deleteReport(report.id!);
+
+              if (success && mounted) {
+                // Reload reports for the profile after deletion
+                await viewModel.loadReportsForProfile(widget.profileId);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Report deleted'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } else if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Report deleted'),
-                    backgroundColor: Colors.green,
+                  SnackBar(
+                    content: Text(viewModel.error ?? 'Failed to delete report'),
+                    backgroundColor: Colors.red,
                   ),
                 );
               }

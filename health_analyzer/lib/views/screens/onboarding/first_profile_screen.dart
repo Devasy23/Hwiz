@@ -17,16 +17,7 @@ class _FirstProfileScreenState extends State<FirstProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   DateTime? _selectedDate;
-  String? _selectedRelationship;
-
-  final List<String> _relationships = [
-    'Self',
-    'Spouse',
-    'Parent',
-    'Child',
-    'Sibling',
-    'Other',
-  ];
+  String? _selectedGender;
 
   @override
   void dispose() {
@@ -59,7 +50,7 @@ class _FirstProfileScreenState extends State<FirstProfileScreen> {
     final success = await profileVM.createProfile(
       name: _nameController.text.trim(),
       dateOfBirth: _selectedDate?.toIso8601String(),
-      relationship: _selectedRelationship ?? 'Self',
+      gender: _selectedGender,
     );
 
     if (success && mounted) {
@@ -174,23 +165,22 @@ class _FirstProfileScreenState extends State<FirstProfileScreen> {
 
                 const SizedBox(height: AppTheme.spacing20),
 
-                // Relationship
+                // Gender
                 DropdownButtonFormField<String>(
-                  value: _selectedRelationship,
+                  value: _selectedGender,
                   decoration: const InputDecoration(
-                    labelText: 'This profile is for (Optional)',
-                    hintText: 'Select relationship',
-                    prefixIcon: Icon(Icons.family_restroom_outlined),
+                    labelText: 'Gender (Optional)',
+                    hintText: 'Select gender',
+                    prefixIcon: Icon(Icons.wc_outlined),
                   ),
-                  items: _relationships.map((relationship) {
-                    return DropdownMenuItem(
-                      value: relationship,
-                      child: Text(relationship),
-                    );
-                  }).toList(),
+                  items: const [
+                    DropdownMenuItem(value: 'Male', child: Text('Male')),
+                    DropdownMenuItem(value: 'Female', child: Text('Female')),
+                    DropdownMenuItem(value: 'Other', child: Text('Other')),
+                  ],
                   onChanged: (value) {
                     setState(() {
-                      _selectedRelationship = value;
+                      _selectedGender = value;
                     });
                   },
                 ),

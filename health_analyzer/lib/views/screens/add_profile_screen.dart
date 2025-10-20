@@ -16,16 +16,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   DateTime? _selectedDate;
-  String? _selectedRelationship;
-
-  final List<String> _relationships = [
-    'Self',
-    'Spouse',
-    'Parent',
-    'Child',
-    'Sibling',
-    'Other',
-  ];
+  String? _selectedGender;
 
   @override
   void dispose() {
@@ -58,7 +49,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     final success = await profileVM.createProfile(
       name: _nameController.text.trim(),
       dateOfBirth: _selectedDate?.toIso8601String(),
-      relationship: _selectedRelationship,
+      gender: _selectedGender,
     );
 
     if (success && mounted) {
@@ -138,23 +129,22 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
 
                 const SizedBox(height: AppTheme.spacing20),
 
-                // Relationship
+                // Gender
                 DropdownButtonFormField<String>(
-                  value: _selectedRelationship,
+                  value: _selectedGender,
                   decoration: const InputDecoration(
-                    labelText: 'Relationship',
-                    hintText: 'Select relationship',
-                    prefixIcon: Icon(Icons.family_restroom_outlined),
+                    labelText: 'Gender',
+                    hintText: 'Select gender',
+                    prefixIcon: Icon(Icons.wc_outlined),
                   ),
-                  items: _relationships.map((relationship) {
-                    return DropdownMenuItem(
-                      value: relationship,
-                      child: Text(relationship),
-                    );
-                  }).toList(),
+                  items: const [
+                    DropdownMenuItem(value: 'Male', child: Text('Male')),
+                    DropdownMenuItem(value: 'Female', child: Text('Female')),
+                    DropdownMenuItem(value: 'Other', child: Text('Other')),
+                  ],
                   onChanged: (value) {
                     setState(() {
-                      _selectedRelationship = value;
+                      _selectedGender = value;
                     });
                   },
                 ),

@@ -55,6 +55,14 @@ dev_dependencies:
   build_runner: ^2.4.7
   json_serializable: ^6.7.1
   mockito: ^5.4.4
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"

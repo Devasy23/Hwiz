@@ -39,7 +39,7 @@ class Profile {
       'name': name,
       'date_of_birth': dateOfBirth,
       'gender': gender,
-      'relationship': relationship,
+      // 'relationship': relationship, // Removed - column doesn't exist in existing databases
       'photo_path': photoPath,
       'created_at': createdAt.toIso8601String(),
     };

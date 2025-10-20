@@ -27,6 +27,10 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('🔍 ReportDetailScreen initialized');
+    debugPrint('  Report ID: ${widget.report.id}');
+    debugPrint('  Test Date: ${widget.report.testDate}');
+    debugPrint('  Lab Name: ${widget.report.labName}');
     _loadParameters();
   }
 
@@ -37,18 +41,47 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   }
 
   Future<void> _loadParameters() async {
+    debugPrint('📋 Loading parameters for report ID: ${widget.report.id}');
     setState(() {
       _isLoading = true;
     });
 
-    final params = await context.read<ReportViewModel>().getParametersForReport(
-          widget.report.id!,
-        );
+    try {
+      final params =
+          await context.read<ReportViewModel>().getParametersForReport(
+                widget.report.id!,
+              );
 
-    setState(() {
-      _parameters = params;
-      _isLoading = false;
-    });
+      debugPrint('✅ Loaded ${params.length} parameters');
+      for (var i = 0; i < params.length && i < 5; i++) {
+        debugPrint(
+            '  - ${params[i].parameterName}: ${params[i].parameterValue} ${params[i].unit}');
+      }
+
+      if (mounted) {
+        setState(() {
+          _parameters = params;
+          _isLoading = false;
+        });
+        debugPrint('✅ Parameters set in state, UI should update');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error loading parameters: $e');
+      debugPrint('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _parameters = [];
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading parameters: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -75,13 +108,16 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           ),
           if (widget.report.reportImagePath != null)
             IconButton(
-              icon: Icon(_showImage ? Icons.list : Icons.image),
+              icon: Icon(_showImage ? Icons.description : Icons.image),
               onPressed: () {
+                debugPrint(
+                    '🖼️ Toggling view: ${_showImage ? "to Data" : "to Report"}');
+                debugPrint('  Image Path: ${widget.report.reportImagePath}');
                 setState(() {
                   _showImage = !_showImage;
                 });
               },
-              tooltip: _showImage ? 'Show Data' : 'Show Image',
+              tooltip: _showImage ? 'View Data' : 'View Report',
             ),
         ],
       ),
@@ -95,35 +131,186 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     final imagePath = widget.report.reportImagePath!;
     final isPDF = imagePath.toLowerCase().endsWith('.pdf');
 
+    debugPrint('🖼️ Building image view');
+    debugPrint('  Path: $imagePath');
+    debugPrint('  Is PDF: $isPDF');
+    debugPrint('  File exists: ${File(imagePath).existsSync()}');
+
     if (isPDF) {
       return _buildPDFView(imagePath);
     }
 
-    return InteractiveViewer(
-      minScale: 0.5,
-      maxScale: 4.0,
-      child: Center(
-        child: Image.file(
-          File(imagePath),
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('Image not found'),
-                ],
+    // Check if file exists before trying to display
+    if (!File(imagePath).existsSync()) {
+      debugPrint('❌ Image file does not exist at: $imagePath');
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.broken_image,
+                size: 80,
+                color: Colors.grey,
               ),
-            );
-          },
+              const SizedBox(height: 24),
+              const Text(
+                'Report image not found',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'The original scan may have been moved or deleted.',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _showImage = false;
+                  });
+                },
+                icon: const Icon(Icons.list),
+                label: const Text('View Data Instead'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      color: Colors.black,
+      child: InteractiveViewer(
+        minScale: 0.5,
+        maxScale: 4.0,
+        child: Center(
+          child: Image.file(
+            File(imagePath),
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('❌ Error loading image: $error');
+              debugPrint('Stack trace: $stackTrace');
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 80,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Error loading image',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        error.toString(),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _showImage = false;
+                          });
+                        },
+                        icon: const Icon(Icons.list),
+                        label: const Text('View Data Instead'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              if (wasSynchronouslyLoaded) {
+                debugPrint('✅ Image loaded synchronously');
+                return child;
+              }
+              if (frame == null) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+              debugPrint('✅ Image loaded (frame: $frame)');
+              return child;
+            },
+          ),
         ),
       ),
     );
   }
 
   Widget _buildPDFView(String pdfPath) {
+    debugPrint('📄 Building PDF view');
+    debugPrint('  Path: $pdfPath');
+    debugPrint('  File exists: ${File(pdfPath).existsSync()}');
+
+    // Check if PDF file exists
+    if (!File(pdfPath).existsSync()) {
+      debugPrint('❌ PDF file does not exist at: $pdfPath');
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.picture_as_pdf,
+                size: 80,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'PDF not found',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'The original PDF may have been moved or deleted.',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _showImage = false;
+                  });
+                },
+                icon: const Icon(Icons.list),
+                label: const Text('View Data Instead'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
       children: [
         // PDF Toolbar
@@ -181,18 +368,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               canShowScrollStatus: true,
               canShowPaginationDialog: true,
               pageLayoutMode: PdfPageLayoutMode.continuous,
-              onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error loading PDF: ${details.error}'),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 4),
-                    ),
-                  );
-                }
-              },
               onDocumentLoaded: (PdfDocumentLoadedDetails details) {
+                debugPrint('✅ PDF loaded successfully');
+                debugPrint('  Total pages: ${details.document.pages.count}');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -201,6 +379,19 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                       ),
                       backgroundColor: Colors.green,
                       duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+                debugPrint('❌ PDF load failed: ${details.error}');
+                debugPrint('  Description: ${details.description}');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error loading PDF: ${details.error}'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 4),
                     ),
                   );
                 }
