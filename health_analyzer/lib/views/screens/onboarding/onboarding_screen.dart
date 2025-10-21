@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/theme_extensions.dart';
 import 'api_setup_screen.dart';
 
 /// Welcome screen with carousel
@@ -81,7 +82,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.surfaceColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -102,7 +103,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Text(
               'LabLens',
               style: AppTheme.headingLarge.copyWith(
-                color: AppTheme.primaryColor,
+                color: context.primaryColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 36,
               ),
@@ -228,14 +229,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildIndicator(bool isActive) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      height: 8,
-      width: isActive ? 24 : 8,
-      decoration: BoxDecoration(
-        color: isActive ? AppTheme.primaryColor : AppTheme.dividerColor,
-        borderRadius: BorderRadius.circular(4),
+    return Builder(
+      builder: (context) => AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        height: 8,
+        width: isActive ? 24 : 8,
+        decoration: BoxDecoration(
+          color: isActive ? context.primaryColor : AppTheme.dividerColor,
+          borderRadius: BorderRadius.circular(4),
+        ),
       ),
     );
   }

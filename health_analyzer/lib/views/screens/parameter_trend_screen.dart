@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../services/database_helper.dart';
 import '../../services/gemini_service.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 
 /// Screen to display parameter trends over time
 class ParameterTrendScreen extends StatefulWidget {
@@ -773,7 +774,7 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
         builder: (context, scrollController) {
           return Container(
             decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
+              color: context.surfaceColor,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(AppTheme.radiusLarge),
                 topRight: Radius.circular(AppTheme.radiusLarge),
@@ -992,11 +993,13 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
           widgets.add(
             Padding(
               padding: const EdgeInsets.only(top: 16, bottom: 8),
-              child: Text(
-                headerText,
-                style: AppTheme.titleMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryColor,
+              child: Builder(
+                builder: (context) => Text(
+                  headerText,
+                  style: AppTheme.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: context.primaryColor,
+                  ),
                 ),
               ),
             ),

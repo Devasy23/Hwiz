@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../models/profile.dart';
+import '../../widgets/forms/profile_form_fields.dart';
 
 /// Screen for creating or editing a profile
 class ProfileFormScreen extends StatefulWidget {
@@ -65,72 +66,23 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
           padding: const EdgeInsets.all(24),
           children: [
             // Name field
-            TextFormField(
+            ProfileFormFields.nameField(
               controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Name',
-                hintText: 'Enter full name',
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              textCapitalization: TextCapitalization.words,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a name';
-                }
-                if (value.trim().length < 2) {
-                  return 'Name must be at least 2 characters';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 20),
 
             // Date of Birth field
-            TextFormField(
-              controller: _dobController,
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Date of Birth',
-                hintText: 'Select date',
-                prefixIcon: const Icon(Icons.cake),
-                suffixIcon: _dobController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          setState(() {
-                            _dobController.clear();
-                            _selectedDate = null;
-                          });
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            ProfileFormFields.dateOfBirthField(
+              context: context,
+              selectedDate: _selectedDate,
               onTap: _selectDate,
+              controller: _dobController,
             ),
             const SizedBox(height: 20),
 
             // Gender field
-            DropdownButtonFormField<String>(
-              value: _selectedGender,
-              decoration: InputDecoration(
-                labelText: 'Gender',
-                hintText: 'Select gender',
-                prefixIcon: const Icon(Icons.wc),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'Male', child: Text('Male')),
-                DropdownMenuItem(value: 'Female', child: Text('Female')),
-                DropdownMenuItem(value: 'Other', child: Text('Other')),
-              ],
+            ProfileFormFields.genderField(
+              selectedGender: _selectedGender,
               onChanged: (value) {
                 setState(() {
                   _selectedGender = value;
@@ -197,26 +149,21 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
   }
 
   Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-      helpText: 'Select Date of Birth',
+    final DateTime? picked = await ProfileFormFields.showDatePickerDialog(
+      context,
+      initialDate: _selectedDate,
     );
 
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
-        _dobController.text = _formatDate(picked);
+        _dobController.text = ProfileFormFields.formatDate(picked);
       });
     }
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year}';
+    return ProfileFormFields.formatDate(date);
   }
 
   Future<void> _saveProfile() async {

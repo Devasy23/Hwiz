@@ -26,16 +26,15 @@ class ProfileAvatar extends StatelessWidget {
         .toUpperCase();
   }
 
-  Color _getColorFromName(String name) {
+  Color _getColorFromName(BuildContext context, String name) {
+    final colorScheme = Theme.of(context).colorScheme;
     final colors = [
-      AppTheme.primaryColor,
-      AppTheme.secondaryColor,
-      AppTheme.accentColor,
-      const Color(0xFFEC4899), // Pink
-      const Color(0xFFF59E0B), // Amber
-      const Color(0xFF10B981), // Green
-      const Color(0xFF6366F1), // Indigo
-      const Color(0xFFEF4444), // Red
+      colorScheme.primary,
+      colorScheme.secondary,
+      colorScheme.tertiary,
+      colorScheme.primaryContainer,
+      colorScheme.secondaryContainer,
+      colorScheme.tertiaryContainer,
     ];
 
     final hash = name.codeUnits.fold(0, (prev, curr) => prev + curr);
@@ -44,7 +43,7 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = backgroundColor ?? _getColorFromName(name);
+    final color = backgroundColor ?? _getColorFromName(context, name);
     final initials = _getInitials(name);
 
     return Container(

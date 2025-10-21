@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 
 /// Empty state widget for when there's no content to display
 class EmptyState extends StatelessWidget {
@@ -30,7 +31,7 @@ class EmptyState extends StatelessWidget {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
+                color: context.surfaceColor,
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/forms/profile_form_fields.dart';
 
 /// Screen for adding a new profile
 class AddProfileScreen extends StatefulWidget {
@@ -25,11 +27,9 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   }
 
   Future<void> _selectDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 365 * 30)),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+    final date = await ProfileFormFields.showDatePickerDialog(
+      context,
+      initialDate: _selectedDate,
     );
 
     if (date != null) {
@@ -60,7 +60,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.surfaceColor,
       appBar: AppBar(
         title: const Text('Add Family Member'),
       ),
@@ -86,62 +86,24 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                 const SizedBox(height: AppTheme.spacing32),
 
                 // Name field
-                TextFormField(
+                ProfileFormFields.nameField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    hintText: 'Enter full name',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a name';
-                    }
-                    return null;
-                  },
-                  textInputAction: TextInputAction.next,
                 ),
 
                 const SizedBox(height: AppTheme.spacing20),
 
                 // Date of birth
-                InkWell(
+                ProfileFormFields.dateOfBirthField(
+                  context: context,
+                  selectedDate: _selectedDate,
                   onTap: _selectDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Date of Birth',
-                      hintText: 'Select date',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
-                      suffixIcon: Icon(Icons.arrow_drop_down),
-                    ),
-                    child: Text(
-                      _selectedDate != null
-                          ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                          : '',
-                      style: _selectedDate != null
-                          ? AppTheme.bodyLarge
-                          : AppTheme.bodyLarge.copyWith(
-                              color: AppTheme.textTertiary,
-                            ),
-                    ),
-                  ),
                 ),
 
                 const SizedBox(height: AppTheme.spacing20),
 
                 // Gender
-                DropdownButtonFormField<String>(
-                  value: _selectedGender,
-                  decoration: const InputDecoration(
-                    labelText: 'Gender',
-                    hintText: 'Select gender',
-                    prefixIcon: Icon(Icons.wc_outlined),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Male', child: Text('Male')),
-                    DropdownMenuItem(value: 'Female', child: Text('Female')),
-                    DropdownMenuItem(value: 'Other', child: Text('Other')),
-                  ],
+                ProfileFormFields.genderField(
+                  selectedGender: _selectedGender,
                   onChanged: (value) {
                     setState(() {
                       _selectedGender = value;

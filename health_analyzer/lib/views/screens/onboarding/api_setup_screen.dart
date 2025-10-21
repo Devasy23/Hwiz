@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/theme_extensions.dart';
 import '../../../viewmodels/settings_viewmodel.dart';
 import '../../../widgets/common/app_button.dart';
 import 'first_profile_screen.dart';
@@ -83,7 +84,7 @@ class _ApiSetupScreenState extends State<ApiSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.surfaceColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
       ),
@@ -100,13 +101,13 @@ class _ApiSetupScreenState extends State<ApiSetupScreen> {
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryLight.withOpacity(0.2),
+                    color: context.primaryContainer,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.key,
                     size: 50,
-                    color: AppTheme.primaryColor,
+                    color: context.primaryColor,
                   ),
                 ),
 

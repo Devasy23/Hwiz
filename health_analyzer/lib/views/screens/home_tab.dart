@@ -53,7 +53,7 @@ class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -94,14 +94,14 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildTopBar() {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacing16),
-      color: AppTheme.surfaceColor,
+      color: Theme.of(context).colorScheme.surface,
       child: Row(
         children: [
           // App logo/name
           Text(
             'LabLens',
             style: AppTheme.headingMedium.copyWith(
-              color: AppTheme.primaryColor,
+              color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -131,7 +131,7 @@ class _HomeTabState extends State<HomeTab> {
                     const SizedBox(height: AppTheme.spacing4),
                     Text(
                       profile.name.split(' ')[0],
-                      style: AppTheme.labelSmall,
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
                 ),
@@ -160,7 +160,7 @@ class _HomeTabState extends State<HomeTab> {
             padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing16),
             child: Text(
               'Recent Reports',
-              style: AppTheme.headingSmall,
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),
         ),
@@ -227,7 +227,7 @@ class _HomeTabState extends State<HomeTab> {
                     children: [
                       Text(
                         profile.name,
-                        style: AppTheme.titleLarge,
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: AppTheme.spacing4),
                       Text(
@@ -236,9 +236,7 @@ class _HomeTabState extends State<HomeTab> {
                           if (profile.relationship != null)
                             profile.relationship!,
                         ].where((s) => s.isNotEmpty).join(' • '),
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
                   ),
@@ -278,22 +276,27 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: AppTheme.primaryColor, size: 24),
-        const SizedBox(height: AppTheme.spacing8),
-        Text(
-          value,
-          style: AppTheme.titleMedium.copyWith(
-            color: AppTheme.primaryColor,
-          ),
-        ),
-        const SizedBox(height: AppTheme.spacing4),
-        Text(
-          label,
-          style: AppTheme.bodySmall,
-        ),
-      ],
+    return Builder(
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return Column(
+          children: [
+            Icon(icon, color: colorScheme.primary, size: 24),
+            const SizedBox(height: AppTheme.spacing8),
+            Text(
+              value,
+              style: AppTheme.titleMedium.copyWith(
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: AppTheme.spacing4),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -326,13 +329,13 @@ class _HomeTabState extends State<HomeTab> {
                       children: [
                         Text(
                           _formatFullDate(report.testDate),
-                          style: AppTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                         if (report.labName?.isNotEmpty ?? false) ...[
                           const SizedBox(height: AppTheme.spacing4),
                           Text(
                             report.labName!,
-                            style: AppTheme.bodySmall,
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
                       ],
@@ -344,9 +347,7 @@ class _HomeTabState extends State<HomeTab> {
               const SizedBox(height: AppTheme.spacing12),
               Text(
                 '${report.parameters.length} parameters',
-                style: AppTheme.bodyMedium.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),

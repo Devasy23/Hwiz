@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/theme_extensions.dart';
 import '../../../viewmodels/profile_viewmodel.dart';
 import '../../../widgets/common/app_button.dart';
+import '../../../widgets/forms/profile_form_fields.dart';
 import '../main_shell.dart';
 
 /// First profile creation during onboarding
@@ -26,11 +28,9 @@ class _FirstProfileScreenState extends State<FirstProfileScreen> {
   }
 
   Future<void> _selectDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 365 * 30)),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+    final date = await ProfileFormFields.showDatePickerDialog(
+      context,
+      initialDate: _selectedDate,
     );
 
     if (date != null) {
@@ -71,7 +71,7 @@ class _FirstProfileScreenState extends State<FirstProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.surfaceColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
       ),
@@ -121,68 +121,33 @@ class _FirstProfileScreenState extends State<FirstProfileScreen> {
                 const SizedBox(height: AppTheme.spacing40),
 
                 // Name field
-                TextFormField(
+                ProfileFormFields.nameField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    hintText: 'Enter your name',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
-                  textInputAction: TextInputAction.next,
+                  hintText: 'Enter your name',
                   autofocus: true,
                 ),
 
                 const SizedBox(height: AppTheme.spacing20),
 
                 // Date of birth
-                InkWell(
+                ProfileFormFields.dateOfBirthField(
+                  context: context,
+                  selectedDate: _selectedDate,
                   onTap: _selectDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Date of Birth (Optional)',
-                      hintText: 'Select date',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
-                      suffixIcon: Icon(Icons.arrow_drop_down),
-                    ),
-                    child: Text(
-                      _selectedDate != null
-                          ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                          : 'Not set',
-                      style: _selectedDate != null
-                          ? AppTheme.bodyLarge
-                          : AppTheme.bodyLarge.copyWith(
-                              color: AppTheme.textTertiary,
-                            ),
-                    ),
-                  ),
+                  isOptional: true,
                 ),
 
                 const SizedBox(height: AppTheme.spacing20),
 
                 // Gender
-                DropdownButtonFormField<String>(
-                  value: _selectedGender,
-                  decoration: const InputDecoration(
-                    labelText: 'Gender (Optional)',
-                    hintText: 'Select gender',
-                    prefixIcon: Icon(Icons.wc_outlined),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Male', child: Text('Male')),
-                    DropdownMenuItem(value: 'Female', child: Text('Female')),
-                    DropdownMenuItem(value: 'Other', child: Text('Other')),
-                  ],
+                ProfileFormFields.genderField(
+                  selectedGender: _selectedGender,
                   onChanged: (value) {
                     setState(() {
                       _selectedGender = value;
                     });
                   },
+                  isOptional: true,
                 ),
 
                 const SizedBox(height: AppTheme.spacing40),

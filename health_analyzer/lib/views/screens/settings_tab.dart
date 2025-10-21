@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import 'settings_screen.dart';
 import 'profile_list_screen.dart';
 
@@ -10,7 +11,7 @@ class SettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.surfaceColor,
       appBar: AppBar(
         title: const Text('Settings'),
       ),
@@ -139,28 +140,30 @@ class SettingsTab extends StatelessWidget {
   }
 
   Widget _buildSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppTheme.spacing16,
-            AppTheme.spacing24,
-            AppTheme.spacing16,
-            AppTheme.spacing8,
-          ),
-          child: Text(
-            title,
-            style: AppTheme.labelLarge.copyWith(
-              color: AppTheme.textSecondary,
+    return Builder(
+      builder: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.spacing16,
+              AppTheme.spacing24,
+              AppTheme.spacing16,
+              AppTheme.spacing8,
+            ),
+            child: Text(
+              title,
+              style: AppTheme.labelLarge.copyWith(
+                color: AppTheme.textSecondary,
+              ),
             ),
           ),
-        ),
-        Container(
-          color: AppTheme.surfaceColor,
-          child: Column(children: children),
-        ),
-      ],
+          Container(
+            color: context.surfaceColor,
+            child: Column(children: children),
+          ),
+        ],
+      ),
     );
   }
 
@@ -171,25 +174,27 @@ class SettingsTab extends StatelessWidget {
     VoidCallback? onTap,
     bool isDestructive = false,
   }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isDestructive ? AppTheme.errorColor : AppTheme.primaryColor,
-      ),
-      title: Text(
-        title,
-        style: AppTheme.bodyLarge.copyWith(
-          color: isDestructive ? AppTheme.errorColor : AppTheme.textPrimary,
+    return Builder(
+      builder: (context) => ListTile(
+        leading: Icon(
+          icon,
+          color: isDestructive ? AppTheme.errorColor : context.primaryColor,
         ),
+        title: Text(
+          title,
+          style: AppTheme.bodyLarge.copyWith(
+            color: isDestructive ? AppTheme.errorColor : AppTheme.textPrimary,
+          ),
+        ),
+        subtitle: subtitle != null
+            ? Text(
+                subtitle,
+                style: AppTheme.bodySmall,
+              )
+            : null,
+        trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
+        onTap: onTap,
       ),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle,
-              style: AppTheme.bodySmall,
-            )
-          : null,
-      trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
-      onTap: onTap,
     );
   }
 

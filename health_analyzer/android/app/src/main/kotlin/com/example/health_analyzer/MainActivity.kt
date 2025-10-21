@@ -1,4 +1,4 @@
-package com.example.health_analyzer
+package com.devasy23.lablens
 
 import io.flutter.embedding.android.FlutterActivity
 

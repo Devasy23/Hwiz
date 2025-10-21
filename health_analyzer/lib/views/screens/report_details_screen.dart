@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import '../../models/blood_report.dart';
 import '../../models/parameter.dart';
 import '../../widgets/common/status_badge.dart';
@@ -185,7 +186,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     final normalCount = widget.report.parameters.length - abnormalCount;
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.surfaceColor,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,9 +195,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             if (widget.report.labName != null)
               Text(
                 widget.report.labName!,
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
           ],
         ),
@@ -293,7 +292,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     'Total',
                     '${widget.report.parameters.length}',
                     Icons.analytics_outlined,
-                    AppTheme.primaryColor,
+                    context.primaryColor,
                   ),
                 ),
                 Container(
@@ -431,12 +430,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                       children: [
                         Text(
                           groupName,
-                          style: AppTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: AppTheme.spacing4),
                         Text(
                           '${parameters.length} parameters${abnormalInGroup > 0 ? ', $abnormalInGroup abnormal' : ''}',
-                          style: AppTheme.bodySmall,
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
@@ -481,119 +480,142 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   }
 
   Widget _buildParameterCard(Parameter parameter) {
-    final status = parameter.status;
+    return Builder(
+      builder: (context) {
+        final status = parameter.status;
+        final colorScheme = Theme.of(context).colorScheme;
 
-    Color bgColor;
-    Color borderColor;
-    StatusType badgeType;
+        Color bgColor;
+        Color borderColor;
+        Color textColor;
+        StatusType badgeType;
 
-    if (status == 'high') {
-      bgColor = AppTheme.errorLight;
-      borderColor = AppTheme.errorColor;
-      badgeType = StatusType.high;
-    } else if (status == 'low') {
-      bgColor = AppTheme.warningLight;
-      borderColor = AppTheme.warningColor;
-      badgeType = StatusType.low;
-    } else {
-      bgColor = AppTheme.successLight;
-      borderColor = AppTheme.successColor;
-      badgeType = StatusType.normal;
-    }
+        if (status == 'high') {
+          // Error state - use error colors with proper contrast
+          bgColor = colorScheme.errorContainer;
+          borderColor = colorScheme.error;
+          textColor = colorScheme.onErrorContainer;
+          badgeType = StatusType.high;
+        } else if (status == 'low') {
+          // Warning state - use tertiary colors for warnings
+          bgColor = colorScheme.tertiaryContainer;
+          borderColor = colorScheme.tertiary;
+          textColor = colorScheme.onTertiaryContainer;
+          badgeType = StatusType.low;
+        } else {
+          // Success state - use secondary colors for normal values
+          bgColor = colorScheme.secondaryContainer;
+          borderColor = colorScheme.secondary;
+          textColor = colorScheme.onSecondaryContainer;
+          badgeType = StatusType.normal;
+        }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(
-        AppTheme.spacing16,
-        0,
-        AppTheme.spacing16,
-        AppTheme.spacing12,
-      ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: borderColor.withOpacity(0.3), width: 1),
-      ),
-      child: InkWell(
-        onTap: () {
-          // Navigate to parameter trend screen
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ParameterTrendScreen(
-                profileId: widget.report.profileId,
-                profileName: widget.profileName ?? 'Profile',
-                initialParameter: parameter.parameterName,
-              ),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacing16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatParameterName(parameter.rawParameterName ??
-                          parameter.parameterName),
-                      style: AppTheme.titleSmall,
-                    ),
-                    const SizedBox(height: AppTheme.spacing8),
-                    Row(
+        return Container(
+          margin: const EdgeInsets.fromLTRB(
+            AppTheme.spacing16,
+            0,
+            AppTheme.spacing16,
+            AppTheme.spacing12,
+          ),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            border: Border.all(color: borderColor.withOpacity(0.3), width: 1),
+          ),
+          child: InkWell(
+            onTap: () {
+              // Navigate to parameter trend screen
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ParameterTrendScreen(
+                    profileId: widget.report.profileId,
+                    profileName: widget.profileName ?? 'Profile',
+                    initialParameter: parameter.parameterName,
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacing16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${parameter.parameterValue}',
-                          style: AppTheme.headingSmall.copyWith(
-                            fontSize: 20,
-                          ),
+                          _formatParameterName(parameter.rawParameterName ??
+                              parameter.parameterName),
+                          style: AppTheme.titleSmall.copyWith(color: textColor),
                         ),
-                        if (parameter.unit != null) ...[
-                          const SizedBox(width: AppTheme.spacing4),
-                          Text(
-                            parameter.unit!,
-                            style: AppTheme.bodyMedium.copyWith(
-                              color: AppTheme.textSecondary,
+                        const SizedBox(height: AppTheme.spacing8),
+                        Row(
+                          children: [
+                            Text(
+                              '${parameter.parameterValue}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall!
+                                  .copyWith(
+                                    fontSize: 20,
+                                    color: textColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
+                            if (parameter.unit != null) ...[
+                              const SizedBox(width: AppTheme.spacing4),
+                              Text(
+                                parameter.unit!,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium!
+                                    .copyWith(
+                                      color: textColor.withOpacity(0.8),
+                                    ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (parameter.referenceRangeMin != null &&
+                            parameter.referenceRangeMax != null) ...[
+                          const SizedBox(height: AppTheme.spacing4),
+                          Text(
+                            'Range: ${parameter.referenceRangeMin} - ${parameter.referenceRangeMax}',
+                            style:
+                                Theme.of(context).textTheme.bodySmall!.copyWith(
+                                      color: textColor.withOpacity(0.7),
+                                    ),
                           ),
                         ],
                       ],
                     ),
-                    if (parameter.referenceRangeMin != null &&
-                        parameter.referenceRangeMax != null) ...[
-                      const SizedBox(height: AppTheme.spacing4),
-                      Text(
-                        'Range: ${parameter.referenceRangeMin} - ${parameter.referenceRangeMax}',
-                        style: AppTheme.bodySmall,
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      StatusBadge(
+                        label: status == 'high'
+                            ? 'High'
+                            : status == 'low'
+                                ? 'Low'
+                                : 'Normal',
+                        type: badgeType,
+                      ),
+                      const SizedBox(height: AppTheme.spacing8),
+                      Icon(
+                        Icons.trending_up,
+                        size: 20,
+                        color: textColor.withOpacity(0.6),
                       ),
                     ],
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  StatusBadge(
-                    label: status == 'high'
-                        ? 'High'
-                        : status == 'low'
-                            ? 'Low'
-                            : 'Normal',
-                    type: badgeType,
-                  ),
-                  const SizedBox(height: AppTheme.spacing8),
-                  Icon(
-                    Icons.trending_up,
-                    size: 20,
-                    color: AppTheme.textTertiary,
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -607,313 +629,328 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       _loadAiInsights();
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacing20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Builder(
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacing20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.lightbulb_outline,
-                  color: AppTheme.infoColor,
-                ),
-                const SizedBox(width: AppTheme.spacing8),
-                Expanded(
-                  child: Text(
-                    'AI Health Analysis',
-                    style: AppTheme.titleLarge.copyWith(
-                      color: AppTheme.infoColor,
-                    ),
-                  ),
-                ),
-                // Refresh button
-                if (_aiInsights != null)
-                  IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
-                    onPressed: () {
-                      setState(() {
-                        _aiInsights = null;
-                      });
-                      _loadAiInsights();
-                    },
-                    tooltip: 'Regenerate insights',
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: AppTheme.spacing16),
-            const Divider(),
-            const SizedBox(height: AppTheme.spacing16),
-
-            // Loading state
-            if (_loadingAiInsights)
-              Center(
-                child: Column(
+                Row(
                   children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: AppTheme.spacing12),
-                    Text(
-                      'Analyzing your report...',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-
-            // Error state
-            else if (_aiError != null)
-              Center(
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: AppTheme.errorColor,
-                      size: 48,
-                    ),
-                    const SizedBox(height: AppTheme.spacing12),
-                    Text(
-                      'Failed to generate AI insights',
-                      style: AppTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppTheme.spacing8),
-                    Text(
-                      _aiError!.contains('API key')
-                          ? 'Please check your Gemini API key in settings'
-                          : 'Please try again later',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppTheme.spacing16),
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _aiError = null;
-                        });
-                        _loadAiInsights();
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              )
-
-            // AI insights content
-            else if (_aiInsights != null)
-              _buildAiInsightsContent()
-
-            // Initial state
-            else
-              Center(
-                child: TextButton.icon(
-                  onPressed: _loadAiInsights,
-                  icon: const Icon(Icons.auto_awesome),
-                  label: const Text('Generate AI Analysis'),
-                ),
-              ),
-
-            // Disclaimer (always show when insights are loaded)
-            if (_aiInsights != null || _loadingAiInsights) ...[
-              const SizedBox(height: AppTheme.spacing20),
-              Container(
-                padding: const EdgeInsets.all(AppTheme.spacing12),
-                decoration: BoxDecoration(
-                  color: AppTheme.warningLight,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.info_outline,
-                      size: 16,
-                      color: AppTheme.warningColor,
+                    Icon(
+                      Icons.lightbulb_outline,
+                      color: colorScheme.primary,
                     ),
                     const SizedBox(width: AppTheme.spacing8),
                     Expanded(
                       child: Text(
-                        'This is AI-generated information for educational purposes only. Always consult qualified healthcare professionals for medical advice.',
-                        style: AppTheme.bodySmall.copyWith(
-                          color: AppTheme.warningColor,
-                        ),
+                        'AI Health Analysis',
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                              color: colorScheme.primary,
+                            ),
                       ),
                     ),
+                    // Refresh button
+                    if (_aiInsights != null)
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _aiInsights = null;
+                          });
+                          _loadAiInsights();
+                        },
+                        tooltip: 'Regenerate insights',
+                      ),
                   ],
                 ),
-              ),
-            ],
-          ],
-        ),
-      ),
+
+                const SizedBox(height: AppTheme.spacing16),
+                const Divider(),
+                const SizedBox(height: AppTheme.spacing16),
+
+                // Loading state
+                if (_loadingAiInsights)
+                  Center(
+                    child: Column(
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: AppTheme.spacing12),
+                        Text(
+                          'Analyzing your report...',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  )
+
+                // Error state
+                else if (_aiError != null)
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: colorScheme.error,
+                          size: 48,
+                        ),
+                        const SizedBox(height: AppTheme.spacing12),
+                        Text(
+                          'Failed to generate AI insights',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: AppTheme.spacing8),
+                        Text(
+                          _aiError!.contains('API key')
+                              ? 'Please check your Gemini API key in settings'
+                              : 'Please try again later',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AppTheme.spacing16),
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _aiError = null;
+                            });
+                            _loadAiInsights();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+
+                // AI insights content
+                else if (_aiInsights != null)
+                  _buildAiInsightsContent()
+
+                // Initial state
+                else
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _loadAiInsights,
+                      icon: const Icon(Icons.auto_awesome),
+                      label: const Text('Generate AI Analysis'),
+                    ),
+                  ),
+
+                // Disclaimer (always show when insights are loaded)
+                if (_aiInsights != null || _loadingAiInsights) ...[
+                  const SizedBox(height: AppTheme.spacing20),
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: colorScheme.onTertiaryContainer,
+                        ),
+                        const SizedBox(width: AppTheme.spacing8),
+                        Expanded(
+                          child: Text(
+                            'This is AI-generated information for educational purposes only. Always consult qualified healthcare professionals for medical advice.',
+                            style:
+                                Theme.of(context).textTheme.bodySmall!.copyWith(
+                                      color: colorScheme.onTertiaryContainer,
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildAiInsightsContent() {
     final insights = _aiInsights!;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Overall Assessment
-        Text(
-          'Overall Assessment',
-          style: AppTheme.titleMedium,
-        ),
-        const SizedBox(height: AppTheme.spacing8),
-        Text(
-          insights['overall_assessment'] ?? 'No assessment available',
-          style: AppTheme.bodyMedium.copyWith(
-            color: AppTheme.textSecondary,
-          ),
-        ),
+    return Builder(
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
 
-        // Areas of Concern
-        if (insights['concerns'] != null &&
-            (insights['concerns'] as List).isNotEmpty) ...[
-          const SizedBox(height: AppTheme.spacing20),
-          Text(
-            'Areas of Concern',
-            style: AppTheme.titleMedium,
-          ),
-          const SizedBox(height: AppTheme.spacing12),
-          ...(insights['concerns'] as List).map((concern) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AppTheme.spacing16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Overall Assessment
+            Text(
+              'Overall Assessment',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppTheme.spacing8),
+            Text(
+              insights['overall_assessment'] ?? 'No assessment available',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+
+            // Areas of Concern
+            if (insights['concerns'] != null &&
+                (insights['concerns'] as List).isNotEmpty) ...[
+              const SizedBox(height: AppTheme.spacing20),
+              Text(
+                'Areas of Concern',
+                style: AppTheme.titleMedium,
+              ),
+              const SizedBox(height: AppTheme.spacing12),
+              ...(insights['concerns'] as List).map((concern) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.spacing16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.warning_amber,
-                        size: 18,
-                        color: AppTheme.warningColor,
-                      ),
-                      const SizedBox(width: AppTheme.spacing8),
-                      Expanded(
-                        child: Text(
-                          concern['parameter'] ?? '',
-                          style: AppTheme.titleSmall.copyWith(
-                            fontWeight: FontWeight.bold,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.warning_amber,
+                            size: 18,
+                            color: colorScheme.tertiary,
                           ),
+                          const SizedBox(width: AppTheme.spacing8),
+                          Expanded(
+                            child: Text(
+                              concern['parameter'] ?? '',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall!
+                                  .copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.spacing4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 26),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (concern['issue'] != null) ...[
+                              Text(
+                                concern['issue'],
+                                style: AppTheme.bodySmall,
+                              ),
+                              const SizedBox(height: AppTheme.spacing4),
+                            ],
+                            if (concern['recommendation'] != null)
+                              Text(
+                                '💡 ${concern['recommendation']}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall!
+                                    .copyWith(
+                                      color: colorScheme.primary,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                              ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppTheme.spacing4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 26),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (concern['issue'] != null) ...[
-                          Text(
-                            concern['issue'],
-                            style: AppTheme.bodySmall,
-                          ),
-                          const SizedBox(height: AppTheme.spacing4),
-                        ],
-                        if (concern['recommendation'] != null)
-                          Text(
-                            '💡 ${concern['recommendation']}',
-                            style: AppTheme.bodySmall.copyWith(
-                              color: AppTheme.infoColor,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ],
+                );
+              }).toList(),
+            ],
 
-        // Positive Notes
-        if (insights['positive_notes'] != null &&
-            (insights['positive_notes'] as List).isNotEmpty) ...[
-          const SizedBox(height: AppTheme.spacing20),
-          Text(
-            'Positive Observations',
-            style: AppTheme.titleMedium,
-          ),
-          const SizedBox(height: AppTheme.spacing12),
-          ...(insights['positive_notes'] as List).map((note) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: AppTheme.successColor,
-                  ),
-                  const SizedBox(width: AppTheme.spacing8),
-                  Expanded(
-                    child: Text(
-                      note,
-                      style: AppTheme.bodyMedium,
-                    ),
-                  ),
-                ],
+            // Positive Notes
+            if (insights['positive_notes'] != null &&
+                (insights['positive_notes'] as List).isNotEmpty) ...[
+              const SizedBox(height: AppTheme.spacing20),
+              Text(
+                'Positive Observations',
+                style: AppTheme.titleMedium,
               ),
-            );
-          }).toList(),
-        ],
-
-        // Next Steps
-        if (insights['next_steps'] != null &&
-            (insights['next_steps'] as List).isNotEmpty) ...[
-          const SizedBox(height: AppTheme.spacing20),
-          Text(
-            'Recommended Next Steps',
-            style: AppTheme.titleMedium,
-          ),
-          const SizedBox(height: AppTheme.spacing12),
-          ...(insights['next_steps'] as List).asMap().entries.map((entry) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${entry.key + 1}',
-                        style: AppTheme.labelSmall.copyWith(
-                          color: Colors.white,
+              const SizedBox(height: AppTheme.spacing12),
+              ...(insights['positive_notes'] as List).map((note) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: colorScheme.secondary,
+                      ),
+                      const SizedBox(width: AppTheme.spacing8),
+                      Expanded(
+                        child: Text(
+                          note,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: AppTheme.spacing8),
-                  Expanded(
-                    child: Text(
-                      entry.value,
-                      style: AppTheme.bodyMedium,
-                    ),
-                  ),
-                ],
+                );
+              }).toList(),
+            ],
+
+            // Next Steps
+            if (insights['next_steps'] != null &&
+                (insights['next_steps'] as List).isNotEmpty) ...[
+              const SizedBox(height: AppTheme.spacing20),
+              Text(
+                'Recommended Next Steps',
+                style: AppTheme.titleMedium,
               ),
-            );
-          }).toList(),
-        ],
-      ],
+              const SizedBox(height: AppTheme.spacing12),
+              ...(insights['next_steps'] as List).asMap().entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: context.primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${entry.key + 1}',
+                            style: AppTheme.labelSmall.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppTheme.spacing8),
+                      Expanded(
+                        child: Text(
+                          entry.value,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ],
+        );
+      },
     );
   }
 

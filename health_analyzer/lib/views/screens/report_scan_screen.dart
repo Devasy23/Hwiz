@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/report_viewmodel.dart';
 import '../../widgets/common/loading_indicator.dart';
@@ -148,7 +149,7 @@ class _ReportScanScreenState extends State<ReportScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.surfaceColor,
       appBar: AppBar(
         title: const Text('Scan Report'),
         leading: IconButton(
@@ -297,13 +298,13 @@ class _ReportScanScreenState extends State<ReportScanScreen> {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryLight.withOpacity(0.2),
+                  color: context.primaryContainer,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 ),
                 child: Icon(
                   icon,
                   size: 32,
-                  color: AppTheme.primaryColor,
+                  color: context.primaryColor,
                 ),
               ),
               const SizedBox(width: AppTheme.spacing16),

@@ -45,6 +45,9 @@ dependencies:
   # PDF Viewer
   syncfusion_flutter_pdfviewer: ^31.2.2
   
+  # Material 3 Dynamic Color (Material You)
+  dynamic_color: ^1.7.0
+  
   # UI Components
   cupertino_icons: ^1.0.6
 

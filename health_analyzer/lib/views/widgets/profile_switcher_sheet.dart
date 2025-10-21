@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/report_viewmodel.dart';
 import '../../widgets/common/profile_avatar.dart';
@@ -13,9 +14,9 @@ class ProfileSwitcherSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(AppTheme.radiusLarge),
           topRight: Radius.circular(AppTheme.radiusLarge),
         ),
@@ -116,9 +117,9 @@ class ProfileSwitcherSheet extends StatelessWidget {
                           style: AppTheme.bodySmall,
                         ),
                         trailing: isSelected
-                            ? const Icon(
+                            ? Icon(
                                 Icons.check_circle,
-                                color: AppTheme.primaryColor,
+                                color: context.primaryColor,
                               )
                             : null,
                         selected: isSelected,

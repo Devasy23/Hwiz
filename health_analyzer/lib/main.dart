@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/profile_viewmodel.dart';
@@ -21,13 +22,38 @@ class LabLensApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProfileViewModel()..initialize()),
         ChangeNotifierProvider(create: (_) => ReportViewModel()),
       ],
-      child: MaterialApp(
-        title: 'LabLens',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme(),
-        darkTheme: AppTheme.darkTheme(),
-        themeMode: ThemeMode.system,
-        home: const MainShell(),
+      child: DynamicColorBuilder(
+        builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+          // Use dynamic colors from system if available (Android 12+)
+          // Otherwise fall back to custom brand colors
+          ColorScheme lightColorScheme;
+          ColorScheme darkColorScheme;
+
+          if (lightDynamic != null && darkDynamic != null) {
+            // Dynamic colors available - use Material You colors from system
+            lightColorScheme = lightDynamic;
+            darkColorScheme = darkDynamic;
+
+            debugPrint('🎨 Material You enabled - using dynamic colors');
+            debugPrint('  Primary: ${lightDynamic.primary}');
+            debugPrint('  Secondary: ${lightDynamic.secondary}');
+          } else {
+            // Dynamic colors not available - use custom brand colors
+            lightColorScheme = AppTheme.lightColorScheme;
+            darkColorScheme = AppTheme.darkColorScheme;
+
+            debugPrint('⚠️ Material You not available - using brand colors');
+          }
+
+          return MaterialApp(
+            title: 'LabLens',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme(lightColorScheme),
+            darkTheme: AppTheme.darkTheme(darkColorScheme),
+            themeMode: ThemeMode.system,
+            home: const MainShell(),
+          );
+        },
       ),
     );
   }
