@@ -19,18 +19,34 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> {
+  Profile? _lastLoadedProfile;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Load reports for current profile
-      final profileVM = context.read<ProfileViewModel>();
-      final reportVM = context.read<ReportViewModel>();
+    // Initial load will happen in didChangeDependencies
+  }
 
-      if (profileVM.currentProfile != null) {
-        reportVM.loadReportsForProfile(profileVM.currentProfile!.id!);
-      }
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadReportsIfNeeded();
+  }
+
+  void _loadReportsIfNeeded() {
+    final profileVM = context.read<ProfileViewModel>();
+    final reportVM = context.read<ReportViewModel>();
+    final currentProfile = profileVM.currentProfile;
+
+    // Load reports if:
+    // 1. There's a current profile
+    // 2. It's different from the last loaded profile (or first time)
+    if (currentProfile != null && _lastLoadedProfile?.id != currentProfile.id) {
+      debugPrint(
+          '📊 Loading reports for profile: ${currentProfile.name} (ID: ${currentProfile.id})');
+      _lastLoadedProfile = currentProfile;
+      reportVM.loadReportsForProfile(currentProfile.id!);
+    }
   }
 
   void _showProfileSwitcher() {
@@ -65,6 +81,16 @@ class _HomeTabState extends State<HomeTab> {
               child: Consumer2<ProfileViewModel, ReportViewModel>(
                 builder: (context, profileVM, reportVM, child) {
                   final profile = profileVM.currentProfile;
+
+                  // Trigger reload when profile changes
+                  // This will be handled by didChangeDependencies on the next frame
+                  if (profile != null && _lastLoadedProfile?.id != profile.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _loadReportsIfNeeded();
+                      }
+                    });
+                  }
 
                   if (profile == null) {
                     return EmptyState(

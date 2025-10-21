@@ -25,36 +25,41 @@ class _MainShellState extends State<MainShell> {
         index: _currentIndex,
         children: _tabs,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
-          ],
-        ),
+      // Material 3 NavigationBar (replaces BottomNavigationBar)
+      // Best practices:
+      // - No shadow/elevation (M3 uses surface color instead)
+      // - Pill-shaped indicator for active state
+      // - 3-5 destinations of equal importance
+      // - Filled icons for active state
+      // - Labeled for better accessibility
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        // Material 3: Use tonal surface elevation instead of shadow
+        elevation: 0,
+        // Indicator shows active state with pill shape
+        indicatorColor: Theme.of(context).colorScheme.secondaryContainer,
+        // Smooth animation between tabs
+        animationDuration: const Duration(milliseconds: 300),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+            // Tooltip for accessibility
+            tooltip: 'Home screen',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
+            tooltip: 'App settings',
+          ),
+        ],
       ),
     );
   }

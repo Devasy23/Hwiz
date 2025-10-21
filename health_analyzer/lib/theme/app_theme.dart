@@ -214,6 +214,12 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
 
+      // Material 3 visual density for better touch targets
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+
+      // Typography based on Material 3 spec
+      typography: Typography.material2021(),
+
       // AppBar Theme
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
@@ -329,6 +335,89 @@ class AppTheme {
         ),
       ),
 
+      // Dialog Theme - Material 3 elevation tones
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+        ),
+        titleTextStyle: headingSmall.copyWith(color: scheme.onSurface),
+        contentTextStyle: bodyMedium.copyWith(color: scheme.onSurfaceVariant),
+      ),
+
+      // Snackbar Theme
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: scheme.inverseSurface,
+        contentTextStyle: bodyMedium.copyWith(color: scheme.onInverseSurface),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+        ),
+      ),
+
+      // Progress Indicator Theme
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        circularTrackColor: scheme.surfaceContainerHighest,
+      ),
+
+      // Switch Theme - Material 3 style
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.onPrimary;
+          }
+          return scheme.outline;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.primary;
+          }
+          return scheme.surfaceContainerHighest;
+        }),
+      ),
+
+      // Checkbox Theme
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.primary;
+          }
+          return Colors.transparent;
+        }),
+        checkColor: WidgetStateProperty.all(scheme.onPrimary),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+
+      // Radio Theme
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.primary;
+          }
+          return scheme.onSurfaceVariant;
+        }),
+      ),
+
+      // List Tile Theme
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: spacing16,
+          vertical: spacing8,
+        ),
+        iconColor: scheme.onSurfaceVariant,
+        textColor: scheme.onSurface,
+        tileColor: scheme.surface,
+        selectedTileColor: scheme.secondaryContainer,
+        selectedColor: scheme.onSecondaryContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+        ),
+      ),
+
       // FAB Theme
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: scheme.primaryContainer,
@@ -339,12 +428,48 @@ class AppTheme {
         ),
       ),
 
-      // Bottom Navigation Bar Theme
+      // Navigation Bar Theme (Material 3 - replaces BottomNavigationBar)
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scheme.surface,
+        elevation: 0, // M3: No shadow, use surface tones instead
+        height: 80, // M3: Taller for better touch targets
+        indicatorColor: scheme.secondaryContainer,
+        indicatorShape:
+            const StadiumBorder(), // Pill shape for active indicator
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        // Icon colors using WidgetState
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(
+              color: scheme.onSecondaryContainer,
+              size: 24,
+            );
+          }
+          return IconThemeData(
+            color: scheme.onSurfaceVariant,
+            size: 24,
+          );
+        }),
+        // Label text styles
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return labelMedium.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          return labelSmall.copyWith(
+            color: scheme.onSurfaceVariant,
+          );
+        }),
+      ),
+
+      // Bottom Navigation Bar Theme (Legacy - prefer NavigationBar)
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: scheme.surface,
         selectedItemColor: scheme.primary,
         unselectedItemColor: scheme.onSurfaceVariant,
-        elevation: 8,
+        elevation: 0, // M3: No elevation
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: labelMedium,
         unselectedLabelStyle: labelSmall,
@@ -394,6 +519,13 @@ class AppTheme {
       brightness: Brightness.dark,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
+
+      // Material 3 visual density for better touch targets
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+
+      // Typography based on Material 3 spec
+      typography: Typography.material2021(),
+
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
@@ -428,31 +560,150 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusFull),
         ),
       ),
+      // Navigation Bar Theme (Material 3 - replaces BottomNavigationBar)
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scheme.surface,
+        elevation: 0, // M3: No shadow, use surface tones instead
+        height: 80, // M3: Taller for better touch targets
+        indicatorColor: scheme.secondaryContainer,
+        indicatorShape:
+            const StadiumBorder(), // Pill shape for active indicator
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        // Icon colors using WidgetState
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(
+              color: scheme.onSecondaryContainer,
+              size: 24,
+            );
+          }
+          return IconThemeData(
+            color: scheme.onSurfaceVariant,
+            size: 24,
+          );
+        }),
+        // Label text styles
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return labelMedium.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          return labelSmall.copyWith(
+            color: scheme.onSurfaceVariant,
+          );
+        }),
+      ),
+
+      // Bottom Navigation Bar Theme (Legacy - prefer NavigationBar)
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: scheme.surface,
         selectedItemColor: scheme.primary,
         unselectedItemColor: scheme.onSurfaceVariant,
-        elevation: 0,
+        elevation: 0, // M3: No elevation
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: labelMedium.copyWith(color: scheme.primary),
         unselectedLabelStyle:
             labelSmall.copyWith(color: scheme.onSurfaceVariant),
       ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surface,
-        indicatorColor: scheme.secondaryContainer,
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+
+      // Dialog Theme
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+        ),
+        titleTextStyle: headingSmall.copyWith(color: scheme.onSurface),
+        contentTextStyle: bodyMedium.copyWith(color: scheme.onSurfaceVariant),
+      ),
+
+      // Snackbar Theme
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: scheme.inverseSurface,
+        contentTextStyle: bodyMedium.copyWith(color: scheme.onInverseSurface),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+        ),
+      ),
+
+      // Progress Indicator Theme
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        circularTrackColor: scheme.surfaceContainerHighest,
+      ),
+
+      // Input Decoration Theme
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: spacing16,
+          vertical: spacing16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: BorderSide(color: scheme.outline, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: BorderSide(color: scheme.outline, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: BorderSide(color: scheme.error, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: BorderSide(color: scheme.error, width: 2),
+        ),
+        labelStyle: bodyMedium.copyWith(color: scheme.onSurfaceVariant),
+        hintStyle: bodyMedium.copyWith(color: scheme.onSurfaceVariant),
+      ),
+
+      // Switch Theme
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return labelMedium.copyWith(color: scheme.onSurface);
+            return scheme.onPrimary;
           }
-          return labelSmall.copyWith(color: scheme.onSurfaceVariant);
+          return scheme.outline;
         }),
-        iconTheme: WidgetStateProperty.resolveWith((states) {
+        trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return IconThemeData(color: scheme.onSecondaryContainer);
+            return scheme.primary;
           }
-          return IconThemeData(color: scheme.onSurfaceVariant);
+          return scheme.surfaceContainerHighest;
         }),
+      ),
+
+      // List Tile Theme
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: spacing16,
+          vertical: spacing8,
+        ),
+        iconColor: scheme.onSurfaceVariant,
+        textColor: scheme.onSurface,
+        tileColor: scheme.surface,
+        selectedTileColor: scheme.secondaryContainer,
+        selectedColor: scheme.onSecondaryContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+        ),
+      ),
+
+      // Divider Theme
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        thickness: 1,
+        space: 1,
       ),
 
       // Text Theme - using colorScheme for proper contrast

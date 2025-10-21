@@ -31,8 +31,9 @@ class LabLensApp extends StatelessWidget {
 
           if (lightDynamic != null && darkDynamic != null) {
             // Dynamic colors available - use Material You colors from system
-            lightColorScheme = lightDynamic;
-            darkColorScheme = darkDynamic;
+            // Harmonize with brand colors for consistent feel
+            lightColorScheme = lightDynamic.harmonized();
+            darkColorScheme = darkDynamic.harmonized();
 
             debugPrint('🎨 Material You enabled - using dynamic colors');
             debugPrint('  Primary: ${lightDynamic.primary}');
@@ -51,6 +52,9 @@ class LabLensApp extends StatelessWidget {
             theme: AppTheme.lightTheme(lightColorScheme),
             darkTheme: AppTheme.darkTheme(darkColorScheme),
             themeMode: ThemeMode.system,
+            // Enable smooth theme transitions
+            themeAnimationDuration: const Duration(milliseconds: 300),
+            themeAnimationCurve: Curves.easeInOut,
             home: const MainShell(),
           );
         },
