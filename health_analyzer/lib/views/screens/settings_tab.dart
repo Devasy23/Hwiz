@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/theme_extensions.dart';
 import 'settings_screen.dart';
 import 'profile_list_screen.dart';
+import 'data_management_screen.dart';
 
 /// Settings tab - app configuration and preferences
 class SettingsTab extends StatelessWidget {
@@ -57,25 +60,14 @@ class SettingsTab extends StatelessWidget {
             'Data Management',
             [
               _buildTile(
-                Icons.upload_file,
-                'Export Data',
-                'Export all reports as JSON',
+                Icons.import_export,
+                'Export & Import Data',
+                'Export reports to CSV/JSON or import from backup',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Export feature coming soon!'),
-                    ),
-                  );
-                },
-              ),
-              _buildTile(
-                Icons.download,
-                'Import Data',
-                'Import from backup file',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Import feature coming soon!'),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DataManagementScreen(),
                     ),
                   );
                 },
@@ -115,6 +107,22 @@ class SettingsTab extends StatelessWidget {
                 Icons.info_outline,
                 'App Version',
                 '1.0.0',
+              ),
+              _buildTile(
+                Icons.code,
+                'GitHub Repository',
+                'View source code & contribute',
+                onTap: () {
+                  _openGitHub(context);
+                },
+              ),
+              _buildTile(
+                Icons.person_outline,
+                'Developer',
+                'Created by @Devasy23',
+                onTap: () {
+                  _showDeveloperInfo(context);
+                },
               ),
               _buildTile(
                 Icons.help_outline,
@@ -293,6 +301,156 @@ class SettingsTab extends StatelessWidget {
             'We use industry-standard encryption for sensitive data storage.',
             style: TextStyle(fontSize: 14),
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openGitHub(BuildContext context) async {
+    const url = 'https://github.com/Devasy23/Hwiz';
+    final uri = Uri.parse(url);
+    
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback - copy to clipboard
+        await Clipboard.setData(const ClipboardData(text: url));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('GitHub URL copied to clipboard!'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Copy to clipboard as fallback
+      await Clipboard.setData(const ClipboardData(text: url));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('GitHub URL copied to clipboard!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeveloperInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.favorite, color: Colors.red),
+            const SizedBox(width: 8),
+            const Text('About the Developer'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'LabLens',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Created with ❤️ by',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: context.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: context.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        'D',
+                        style: TextStyle(
+                          color: context.onPrimaryColor,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '@Devasy23',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Full Stack Developer',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.onSurfaceColor.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '🚀 Open Source Contribution',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This app is open source! Feel free to contribute, report issues, or suggest features on GitHub.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _openGitHub(context);
+                    },
+                    icon: const Icon(Icons.code, size: 18),
+                    label: const Text('View on GitHub'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
           TextButton(

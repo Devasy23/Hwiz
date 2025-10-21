@@ -48,6 +48,15 @@ dependencies:
   # Material 3 Dynamic Color (Material You)
   dynamic_color: ^1.7.0
   
+  # CSV Export
+  csv: ^6.0.0
+  
+  # Share/Export Files
+  share_plus: ^10.1.4
+  
+  # URL Launcher
+  url_launcher: ^6.3.1
+  
   # UI Components
   cupertino_icons: ^1.0.6
 

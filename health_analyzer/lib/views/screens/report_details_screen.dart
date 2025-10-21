@@ -7,10 +7,13 @@ import '../../models/parameter.dart';
 import '../../widgets/common/status_badge.dart';
 import '../../widgets/common/profile_avatar.dart';
 import '../../services/gemini_service.dart';
+import '../../services/database_helper.dart';
 import '../../viewmodels/report_viewmodel.dart';
 import 'parameter_trend_screen.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Report details screen with grouped parameters
 class ReportDetailsScreen extends StatefulWidget {
@@ -43,11 +46,23 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     _getParameterGroups().forEach((group, _) {
       _expandedGroups[group] = false;
     });
+    
+    // Load cached AI analysis if available
+    if (widget.report.aiAnalysis != null) {
+      try {
+        _aiInsights = jsonDecode(widget.report.aiAnalysis!);
+      } catch (e) {
+        debugPrint('Error parsing cached AI analysis: $e');
+      }
+    }
   }
 
   /// Load AI insights for the report
-  Future<void> _loadAiInsights() async {
-    if (_aiInsights != null || _loadingAiInsights) return;
+  Future<void> _loadAiInsights({bool forceRefresh = false}) async {
+    // Check if we have cached insights and not forcing refresh
+    if (_aiInsights != null && !forceRefresh) return;
+    
+    if (_loadingAiInsights) return;
 
     setState(() {
       _loadingAiInsights = true;
@@ -80,6 +95,15 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
         abnormalParameters: abnormalParams,
         allParameters: allParams,
       );
+
+      // Cache the AI analysis in database
+      if (widget.report.id != null) {
+        final aiAnalysisJson = jsonEncode(insights);
+        await DatabaseHelper.instance.updateAiAnalysis(
+          widget.report.id!,
+          aiAnalysisJson,
+        );
+      }
 
       setState(() {
         _aiInsights = insights;
@@ -668,10 +692,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                       IconButton(
                         icon: const Icon(Icons.refresh, size: 20),
                         onPressed: () {
-                          setState(() {
-                            _aiInsights = null;
-                          });
-                          _loadAiInsights();
+                          _loadAiInsights(forceRefresh: true);
                         },
                         tooltip: 'Regenerate insights',
                       ),
@@ -996,7 +1017,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 title: const Text('Share Report'),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Share functionality
+                  _shareReport();
                 },
               ),
               ListTile(
@@ -1015,6 +1036,81 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _shareReport() async {
+    try {
+      // Create a text summary of the report
+      final StringBuffer summary = StringBuffer();
+      
+      summary.writeln('📊 Blood Test Report');
+      summary.writeln('━━━━━━━━━━━━━━━━━━━');
+      if (widget.profileName != null) {
+        summary.writeln('Patient: ${widget.profileName}');
+      }
+      summary.writeln('Date: ${_formatDate(widget.report.testDate)}');
+      if (widget.report.labName != null) {
+        summary.writeln('Lab: ${widget.report.labName}');
+      }
+      summary.writeln('');
+      
+      summary.writeln('Summary:');
+      final abnormalCount = widget.report.abnormalParameters.length;
+      final normalCount = widget.report.parameters.length - abnormalCount;
+      summary.writeln('• Total Parameters: ${widget.report.parameters.length}');
+      summary.writeln('• Normal: $normalCount');
+      summary.writeln('• Abnormal: $abnormalCount');
+      summary.writeln('');
+      
+      // Add abnormal parameters if any
+      if (abnormalCount > 0) {
+        summary.writeln('⚠️ Abnormal Parameters:');
+        summary.writeln('━━━━━━━━━━━━━━━━━━━');
+        for (final param in widget.report.abnormalParameters) {
+          final name = _formatParameterName(param.rawParameterName ?? param.parameterName);
+          summary.writeln('$name: ${param.parameterValue}${param.unit ?? ''}');
+          if (param.referenceRangeMin != null && param.referenceRangeMax != null) {
+            summary.writeln('  Range: ${param.referenceRangeMin} - ${param.referenceRangeMax}');
+          }
+          summary.writeln('  Status: ${param.status.toUpperCase()}');
+          summary.writeln('');
+        }
+      }
+      
+      // Add all parameters grouped
+      final groups = _getParameterGroups();
+      summary.writeln('📋 Detailed Results:');
+      summary.writeln('━━━━━━━━━━━━━━━━━━━');
+      
+      for (final entry in groups.entries) {
+        summary.writeln('\n${entry.key}:');
+        for (final param in entry.value) {
+          final name = _formatParameterName(param.rawParameterName ?? param.parameterName);
+          final status = param.isNormal ? '✓' : '⚠️';
+          summary.writeln('  $status $name: ${param.parameterValue}${param.unit ?? ''}');
+        }
+      }
+      
+      summary.writeln('\n━━━━━━━━━━━━━━━━━━━');
+      summary.writeln('Generated by LabLens');
+      summary.writeln('Health tracking made simple');
+      
+      // Share the text
+      await Share.share(
+        summary.toString(),
+        subject: 'Blood Test Report - ${_formatDate(widget.report.testDate)}',
+      );
+      
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share report: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 
   void _confirmDelete() {

@@ -9,6 +9,7 @@ import '../../widgets/common/empty_state.dart';
 import '../widgets/profile_switcher_sheet.dart';
 import 'report_scan_screen.dart';
 import 'report_details_screen.dart';
+import 'compare_reports_screen.dart';
 
 /// Home tab - main view with profile content
 class HomeTab extends StatefulWidget {
@@ -62,6 +63,17 @@ class _HomeTabState extends State<HomeTab> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const ReportScanScreen(),
+      ),
+    );
+  }
+
+  void _navigateToCompare(Profile profile) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CompareReportsScreen(
+          profileId: profile.id!,
+          profileName: profile.name,
+        ),
       ),
     );
   }
@@ -132,6 +144,29 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
           const Spacer(),
+
+          // Action buttons
+          Consumer2<ProfileViewModel, ReportViewModel>(
+            builder: (context, profileVM, reportVM, child) {
+              final profile = profileVM.currentProfile;
+              final hasReports = reportVM.reports.isNotEmpty;
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Compare button
+                  if (hasReports && reportVM.reports.length >= 2)
+                    IconButton(
+                      icon: const Icon(Icons.compare_arrows),
+                      tooltip: 'Compare Reports',
+                      onPressed: () => _navigateToCompare(profile!),
+                    ),
+
+                  const SizedBox(width: AppTheme.spacing8),
+                ],
+              );
+            },
+          ),
 
           // Profile switcher
           Consumer<ProfileViewModel>(
