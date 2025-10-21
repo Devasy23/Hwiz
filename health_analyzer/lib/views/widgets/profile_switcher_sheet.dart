@@ -73,7 +73,8 @@ class ProfileSwitcherSheet extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: AppTheme.spacing16),
-                          ElevatedButton(
+                          // Material 3 FilledButton for primary action
+                          FilledButton(
                             onPressed: () {
                               Navigator.of(context).pop();
                               Navigator.of(context).push(

@@ -1031,7 +1031,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            // Material 3 FilledButton for destructive action
+            FilledButton(
               onPressed: () async {
                 debugPrint(
                     '🗑️ Delete button pressed for report ${widget.report.id}');
