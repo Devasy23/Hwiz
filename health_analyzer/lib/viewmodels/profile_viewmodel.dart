@@ -15,6 +15,7 @@ class ProfileViewModel extends ChangeNotifier {
   // Getters
   List<Profile> get profiles => _profiles;
   Profile? get selectedProfile => _selectedProfile;
+  Profile? get currentProfile => _selectedProfile; // Alias for UI convenience
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasProfiles => _profiles.isNotEmpty;
@@ -62,6 +63,7 @@ class ProfileViewModel extends ChangeNotifier {
     required String name,
     String? dateOfBirth,
     String? gender,
+    String? relationship,
     String? photoPath,
   }) async {
     _setLoading(true);
@@ -72,6 +74,7 @@ class ProfileViewModel extends ChangeNotifier {
         name: name,
         dateOfBirth: dateOfBirth,
         gender: gender,
+        relationship: relationship,
         photoPath: photoPath,
         createdAt: DateTime.now(),
       );

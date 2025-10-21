@@ -5,6 +5,7 @@ class Profile {
   final String name;
   final String? dateOfBirth;
   final String? gender;
+  final String? relationship;
   final String? photoPath;
   final DateTime createdAt;
 
@@ -13,6 +14,7 @@ class Profile {
     required this.name,
     this.dateOfBirth,
     this.gender,
+    this.relationship,
     this.photoPath,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
@@ -24,6 +26,7 @@ class Profile {
       name: map['name'] as String,
       dateOfBirth: map['date_of_birth'] as String?,
       gender: map['gender'] as String?,
+      relationship: map['relationship'] as String?,
       photoPath: map['photo_path'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
@@ -36,6 +39,7 @@ class Profile {
       'name': name,
       'date_of_birth': dateOfBirth,
       'gender': gender,
+      // 'relationship': relationship, // Removed - column doesn't exist in existing databases
       'photo_path': photoPath,
       'created_at': createdAt.toIso8601String(),
     };
@@ -47,6 +51,7 @@ class Profile {
     String? name,
     String? dateOfBirth,
     String? gender,
+    String? relationship,
     String? photoPath,
     DateTime? createdAt,
   }) {
@@ -55,6 +60,7 @@ class Profile {
       name: name ?? this.name,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,
+      relationship: relationship ?? this.relationship,
       photoPath: photoPath ?? this.photoPath,
       createdAt: createdAt ?? this.createdAt,
     );

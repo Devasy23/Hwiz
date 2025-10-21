@@ -8,6 +8,7 @@ class BloodReport {
   final DateTime testDate;
   final String? labName;
   final String? reportImagePath;
+  final String? aiAnalysis; // Cached AI analysis
   final List<Parameter> parameters;
   final DateTime createdAt;
 
@@ -17,10 +18,11 @@ class BloodReport {
     required this.testDate,
     this.labName,
     this.reportImagePath,
+    this.aiAnalysis,
     List<Parameter>? parameters,
     DateTime? createdAt,
-  }) : parameters = parameters ?? [],
-       createdAt = createdAt ?? DateTime.now();
+  })  : parameters = parameters ?? [],
+        createdAt = createdAt ?? DateTime.now();
 
   /// Create BloodReport from database map
   factory BloodReport.fromMap(Map<String, dynamic> map) {
@@ -30,6 +32,7 @@ class BloodReport {
       testDate: DateTime.parse(map['test_date'] as String),
       labName: map['lab_name'] as String?,
       reportImagePath: map['report_image_path'] as String?,
+      aiAnalysis: map['ai_analysis'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
@@ -42,6 +45,7 @@ class BloodReport {
       'test_date': testDate.toIso8601String(),
       'lab_name': labName,
       'report_image_path': reportImagePath,
+      'ai_analysis': aiAnalysis,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -53,6 +57,7 @@ class BloodReport {
     DateTime? testDate,
     String? labName,
     String? reportImagePath,
+    String? aiAnalysis,
     List<Parameter>? parameters,
     DateTime? createdAt,
   }) {
@@ -62,6 +67,7 @@ class BloodReport {
       testDate: testDate ?? this.testDate,
       labName: labName ?? this.labName,
       reportImagePath: reportImagePath ?? this.reportImagePath,
+      aiAnalysis: aiAnalysis ?? this.aiAnalysis,
       parameters: parameters ?? this.parameters,
       createdAt: createdAt ?? this.createdAt,
     );

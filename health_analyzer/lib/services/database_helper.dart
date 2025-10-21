@@ -72,6 +72,7 @@ class DatabaseHelper {
         test_date TEXT NOT NULL,
         lab_name TEXT,
         report_image_path TEXT,
+        ai_analysis TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (profile_id) REFERENCES ${AppConstants.tableProfiles}(id) ON DELETE CASCADE
       )
@@ -262,6 +263,17 @@ class DatabaseHelper {
     final db = await database;
     return await db.delete(
       AppConstants.tableReports,
+      where: 'id = ?',
+      whereArgs: [reportId],
+    );
+  }
+
+  /// Update AI analysis for a report
+  Future<int> updateAiAnalysis(int reportId, String aiAnalysis) async {
+    final db = await database;
+    return await db.update(
+      AppConstants.tableReports,
+      {'ai_analysis': aiAnalysis},
       where: 'id = ?',
       whereArgs: [reportId],
     );

@@ -329,16 +329,39 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () {
+                              debugPrint('🔵 "View Reports" button tapped');
+                              debugPrint('  Profile ID: ${profile.id}');
+                              debugPrint('  Profile Name: ${profile.name}');
                               Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ReportListScreen(
-                                    profileId: profile.id!,
-                                    profileName: profile.name,
+                              try {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) {
+                                      debugPrint(
+                                          '🔵 Building ReportListScreen...');
+                                      return ReportListScreen(
+                                        profileId: profile.id!,
+                                        profileName: profile.name,
+                                      );
+                                    },
                                   ),
-                                ),
-                              );
+                                ).then((value) {
+                                  debugPrint(
+                                      '🔙 Returned from ReportListScreen');
+                                }).catchError((error) {
+                                  debugPrint('❌ Navigation error: $error');
+                                });
+                              } catch (e) {
+                                debugPrint(
+                                    '❌ Exception navigating to reports: $e');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             },
                             icon: const Icon(Icons.assessment),
                             label: const Text('View Reports'),

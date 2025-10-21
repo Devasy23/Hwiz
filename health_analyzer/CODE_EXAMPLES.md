@@ -111,7 +111,7 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Health Analyzer'),
+        title: const Text('LabLens'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -595,7 +595,7 @@ class HealthAnalyzerApp extends StatelessWidget {
         // Add more providers as needed
       ],
       child: MaterialApp(
-        title: 'Health Analyzer',
+        title: 'LabLens',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
