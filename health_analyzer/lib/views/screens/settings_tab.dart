@@ -315,7 +315,7 @@ class SettingsTab extends StatelessWidget {
   void _openGitHub(BuildContext context) async {
     const url = 'https://github.com/Devasy23/Hwiz';
     final uri = Uri.parse(url);
-    
+
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);

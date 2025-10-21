@@ -21,8 +21,8 @@ class BloodReport {
     this.aiAnalysis,
     List<Parameter>? parameters,
     DateTime? createdAt,
-  }) : parameters = parameters ?? [],
-       createdAt = createdAt ?? DateTime.now();
+  })  : parameters = parameters ?? [],
+        createdAt = createdAt ?? DateTime.now();
 
   /// Create BloodReport from database map
   factory BloodReport.fromMap(Map<String, dynamic> map) {
