@@ -491,22 +491,31 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
         StatusType badgeType;
 
         if (status == 'high') {
-          // Error state - use error colors with proper contrast
-          bgColor = colorScheme.errorContainer;
-          borderColor = colorScheme.error;
-          textColor = colorScheme.onErrorContainer;
+          // Error state - red tinted surface
+          bgColor = Color.alphaBlend(
+            AppTheme.errorColor.withOpacity(0.12),
+            colorScheme.surface,
+          );
+          borderColor = AppTheme.errorColor;
+          textColor = colorScheme.onSurface;
           badgeType = StatusType.high;
         } else if (status == 'low') {
-          // Warning state - use tertiary colors for warnings
-          bgColor = colorScheme.tertiaryContainer;
-          borderColor = colorScheme.tertiary;
-          textColor = colorScheme.onTertiaryContainer;
+          // Warning state - orange/yellow tinted surface
+          bgColor = Color.alphaBlend(
+            AppTheme.warningColor.withOpacity(0.12),
+            colorScheme.surface,
+          );
+          borderColor = AppTheme.warningColor;
+          textColor = colorScheme.onSurface;
           badgeType = StatusType.low;
         } else {
-          // Success state - use secondary colors for normal values
-          bgColor = colorScheme.secondaryContainer;
-          borderColor = colorScheme.secondary;
-          textColor = colorScheme.onSecondaryContainer;
+          // Success state - green tinted surface
+          bgColor = Color.alphaBlend(
+            AppTheme.successColor.withOpacity(0.12),
+            colorScheme.surface,
+          );
+          borderColor = AppTheme.successColor;
+          textColor = colorScheme.onSurface;
           badgeType = StatusType.normal;
         }
 

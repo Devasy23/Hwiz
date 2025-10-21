@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/report_viewmodel.dart';
 import '../../models/blood_report.dart';
-import 'report_detail_screen.dart';
+import 'report_details_screen.dart';
 import 'package:intl/intl.dart';
 
 /// Screen to display all blood reports for a profile
@@ -161,12 +161,15 @@ class _ReportListScreenState extends State<ReportListScreen> {
         context,
         MaterialPageRoute(
           builder: (context) {
-            debugPrint('✅ Building ReportDetailScreen...');
-            return ReportDetailScreen(report: report);
+            debugPrint('✅ Building ReportDetailsScreen...');
+            return ReportDetailsScreen(
+              report: report,
+              profileName: widget.profileName,
+            );
           },
         ),
       ).then((value) {
-        debugPrint('🔙 Returned from ReportDetailScreen');
+        debugPrint('🔙 Returned from ReportDetailsScreen');
       }).catchError((error) {
         debugPrint('❌ Navigation error: $error');
         ScaffoldMessenger.of(context).showSnackBar(
