@@ -1,16 +1,18 @@
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:Lablens/services/gemini_model_wrapper.dart';
 
 import '../utils/constants.dart';
 import 'loinc_mapper.dart';
 
 /// Gemini Service - Handles OCR and data extraction from blood reports
 class GeminiService {
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  GenerativeModel? _model;
+  FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  GenerativeModelWrapper? _model;
 
   /// Initialize Gemini model with API key
   Future<void> initialize() async {
@@ -27,7 +29,16 @@ class GeminiService {
         ) ??
         'gemini-2.5-flash';
 
-    _model = GenerativeModel(model: selectedModel, apiKey: apiKey);
+    _model =
+        GenerativeModelWrapperImpl(GenerativeModel(model: selectedModel, apiKey: apiKey));
+  }
+
+  /// Initialize for test
+  @visibleForTesting
+  void initializeForTest(
+      FlutterSecureStorage secureStorage, GenerativeModelWrapper model) {
+    _secureStorage = secureStorage;
+    _model = model;
   }
 
   /// Set API key in secure storage
@@ -55,7 +66,7 @@ class GeminiService {
     ];
 
     try {
-      final response = await _model!.generateContent(
+      final extractedText = await _model!.generateContentText(
         content,
         generationConfig: GenerationConfig(
           temperature: 0.1, // Low temperature for consistent output
@@ -63,7 +74,6 @@ class GeminiService {
         ),
       );
 
-      final extractedText = response.text;
       if (extractedText == null || extractedText.isEmpty) {
         throw Exception('No data extracted from the report');
       }
@@ -246,16 +256,20 @@ Return ONLY the JSON, nothing else.
   }
 
   /// Test API key validity
-  Future<bool> testApiKey(String apiKey) async {
+  @visibleForTesting
+  Future<bool> testApiKey(String apiKey,
+      {GenerativeModelWrapper? testModel}) async {
     try {
-      final testModel = GenerativeModel(
-        model: 'gemini-1.5-pro',
-        apiKey: apiKey,
-      );
+      final modelToTest = testModel ??
+          GenerativeModelWrapperImpl(GenerativeModel(
+            model: 'gemini-1.5-pro',
+            apiKey: apiKey,
+          ));
 
-      final response = await testModel.generateContent([Content.text('Hello')]);
+      final responseText =
+          await modelToTest.generateContentText([Content.text('Hello')]);
 
-      return response.text != null;
+      return responseText != null;
     } catch (e) {
       return false;
     }
@@ -283,5 +297,217 @@ Return ONLY the JSON, nothing else.
     }
 
     throw lastException ?? Exception('Failed after $maxAttempts attempts');
+  }
+
+  /// Generate health insights for blood report
+  Future<Map<String, dynamic>> generateHealthInsights({
+    required List<Map<String, dynamic>> abnormalParameters,
+    required List<Map<String, dynamic>> allParameters,
+    String? age,
+    String? gender,
+  }) async {
+    if (_model == null) {
+      await initialize();
+    }
+
+    final prompt = _buildHealthInsightsPrompt(
+      abnormalParameters: abnormalParameters,
+      allParameters: allParameters,
+      age: age,
+      gender: gender,
+    );
+
+    try {
+      final analysisText = await _model!.generateContentText(
+        [Content.text(prompt)],
+        generationConfig: GenerationConfig(
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+        ),
+      );
+
+      if (analysisText == null || analysisText.isEmpty) {
+        throw Exception('No analysis generated');
+      }
+
+      debugPrint('🔍 AI Health Insights Response:');
+      debugPrint(analysisText);
+
+      return _parseHealthInsightsResponse(analysisText);
+    } catch (e) {
+      debugPrint('❌ Health Insights Error: $e');
+      throw Exception('Failed to generate health insights: ${e.toString()}');
+    }
+  }
+
+  /// Build prompt for health insights generation
+  String _buildHealthInsightsPrompt({
+    required List<Map<String, dynamic>> abnormalParameters,
+    required List<Map<String, dynamic>> allParameters,
+    String? age,
+    String? gender,
+  }) {
+    final abnormalList = abnormalParameters.map((p) {
+      return '- ${p['name']}: ${p['value']} ${p['unit']} (Normal: ${p['ref_min']}-${p['ref_max']}) - Status: ${p['status']}';
+    }).join('\n');
+
+    final normalList = allParameters
+        .where((p) => !abnormalParameters.any((a) => a['name'] == p['name']))
+        .take(5)
+        .map((p) => '- ${p['name']}: ${p['value']} ${p['unit']}')
+        .join('\n');
+
+    return '''
+You are a medical AI assistant analyzing blood test results. Provide clear, helpful health insights.
+
+${age != null ? 'Patient Age: $age years' : ''}
+${gender != null ? 'Gender: $gender' : ''}
+
+ABNORMAL PARAMETERS:
+$abnormalList
+
+${normalList.isNotEmpty ? 'NORMAL PARAMETERS (sample):\n$normalList' : ''}
+
+Provide a health analysis in JSON format with these sections:
+
+{
+  "overall_assessment": "Brief 2-3 sentence summary of overall health status",
+  "concerns": [
+    {
+      "parameter": "Parameter name",
+      "issue": "What the abnormal value indicates",
+      "recommendation": "Specific actionable advice"
+    }
+  ],
+  "positive_notes": [
+    "Brief positive observations about normal values"
+  ],
+  "next_steps": [
+    "Actionable recommendations (e.g., dietary changes, follow-up tests)"
+  ]
+}
+
+IMPORTANT:
+- Be clear and concise
+- Focus on actionable advice
+- Use simple, non-technical language
+- Avoid alarming language
+- Include dietary and lifestyle suggestions
+- Limit concerns to top 3-4 most important
+- Return ONLY valid JSON, no other text
+
+Generate the analysis now:
+''';
+  }
+
+  /// Parse health insights response
+  Map<String, dynamic> _parseHealthInsightsResponse(String response) {
+    // Remove markdown code blocks if present
+    String cleaned =
+        response.replaceAll('```json', '').replaceAll('```', '').trim();
+
+    // Remove any text before the first {
+    final firstBrace = cleaned.indexOf('{');
+    if (firstBrace > 0) {
+      cleaned = cleaned.substring(firstBrace);
+    }
+
+    // Remove any text after the last }
+    final lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace > 0 && lastBrace < cleaned.length - 1) {
+      cleaned = cleaned.substring(0, lastBrace + 1);
+    }
+
+    try {
+      return json.decode(cleaned);
+    } catch (e) {
+      debugPrint('❌ Failed to parse health insights JSON: $e');
+      // Return fallback structure
+      return {
+        'overall_assessment':
+            'Unable to generate detailed analysis. Please consult your healthcare provider.',
+        'concerns': [],
+        'positive_notes': [],
+        'next_steps': [
+          'Consult with your healthcare provider for interpretation'
+        ],
+      };
+    }
+  }
+
+  /// Generate trend analysis for a specific parameter
+  Future<String> generateTrendAnalysis({
+    required String parameterName,
+    required List<Map<String, dynamic>> historicalData,
+    String? currentStatus,
+  }) async {
+    if (_model == null) {
+      await initialize();
+    }
+
+    final prompt = _buildTrendAnalysisPrompt(
+      parameterName: parameterName,
+      historicalData: historicalData,
+      currentStatus: currentStatus,
+    );
+
+    try {
+      final analysisText = await _model!.generateContentText(
+        [Content.text(prompt)],
+        generationConfig: GenerationConfig(
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+        ),
+      );
+
+      if (analysisText == null || analysisText.isEmpty) {
+        throw Exception('No trend analysis generated');
+      }
+
+      debugPrint('🔍 AI Trend Analysis Response:');
+      debugPrint(analysisText);
+
+      return analysisText.trim();
+    } catch (e) {
+      debugPrint('❌ Trend Analysis Error: $e');
+      throw Exception('Failed to generate trend analysis: ${e.toString()}');
+    }
+  }
+
+  /// Build prompt for trend analysis
+  String _buildTrendAnalysisPrompt({
+    required String parameterName,
+    required List<Map<String, dynamic>> historicalData,
+    String? currentStatus,
+  }) {
+    final dataPoints = historicalData.map((d) {
+      return '${d['date']}: ${d['value']} ${d['unit'] ?? ''}';
+    }).join('\n');
+
+    return '''
+You are a medical AI assistant analyzing trends in blood test parameters.
+
+PARAMETER: $parameterName
+${currentStatus != null ? 'CURRENT STATUS: $currentStatus' : ''}
+
+HISTORICAL DATA (chronological):
+$dataPoints
+
+Analyze this trend and provide:
+1. Pattern observation (improving, declining, stable, fluctuating)
+2. Possible reasons for the trend
+3. Specific recommendations (diet, lifestyle, when to retest)
+4. What to watch for
+
+Keep the response:
+- Clear and actionable (200-300 words)
+- In simple language
+- Focused on practical advice
+- Non-alarming but informative
+
+Do NOT use JSON format. Write as clear paragraphs with bullet points where helpful.
+
+Provide the analysis now:
+''';
   }
 }

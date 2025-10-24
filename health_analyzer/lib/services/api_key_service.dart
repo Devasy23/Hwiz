@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:io';
 
 /// Service to manage Gemini API key storage, validation, and retrieval
 class ApiKeyService {
@@ -51,7 +52,7 @@ class ApiKeyService {
     }
 
     try {
-      // Test the API key with a simple request using Gemini 1.5 Flash
+      // Test the API key with a simple request using Gemini 2.5 Flash
       final model = GenerativeModel(
         model: 'gemini-2.5-flash',
         apiKey: apiKey,
@@ -71,6 +72,22 @@ class ApiKeyService {
       } else {
         return (false, 'Invalid response from API. Please check your key');
       }
+    } on SocketException catch (e) {
+      // Network connectivity issues
+      if (e.osError?.errorCode == 7 ||
+          e.message.contains('Failed host lookup')) {
+        return (
+          false,
+          'Unable to reach Google AI servers. Please check:\n'
+              '• Your internet connection is active\n'
+              '• You\'re not behind a restrictive firewall\n'
+              '• DNS resolution is working'
+        );
+      }
+      return (
+        false,
+        'Network error: Unable to connect. Please check your internet connection'
+      );
     } on GenerativeAIException catch (e) {
       // Handle specific AI exceptions
       if (e.message.contains('API key not valid') ||
@@ -79,16 +96,37 @@ class ApiKeyService {
         return (false, 'Invalid API key. Please check your key and try again');
       } else if (e.message.contains('quota') || e.message.contains('QUOTA')) {
         return (false, 'API key is valid but quota exceeded. Try again later');
+      } else if (e.message.contains('model') || e.message.contains('MODEL')) {
+        return (
+          false,
+          'Model access error. The API key may not have access to this model'
+        );
       } else {
         return (false, 'API Error: ${e.message}');
       }
     } on TimeoutException catch (_) {
       return (
         false,
-        'Connection timeout. Please check your internet connection'
+        'Connection timeout. Please check your internet connection and try again'
       );
     } catch (e) {
-      return (false, 'Validation failed: ${e.toString()}');
+      // Catch any other errors including ClientException
+      final errorStr = e.toString();
+
+      // Check for network-related errors in the error string
+      if (errorStr.contains('SocketException') ||
+          errorStr.contains('Failed host lookup') ||
+          errorStr.contains('ClientException')) {
+        return (
+          false,
+          'Network connection error. Please check your internet connection and try again'
+        );
+      }
+
+      return (
+        false,
+        'Validation error: Unable to verify API key. Please try again'
+      );
     }
   }
 

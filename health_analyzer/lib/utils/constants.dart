@@ -1,7 +1,7 @@
 /// Application Constants
 class AppConstants {
   // App Info
-  static const String appName = 'Health Analyzer';
+  static const String appName = 'LabLens';
   static const String appVersion = '1.0.0';
 
   // Database
