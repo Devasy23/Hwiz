@@ -1,16 +1,18 @@
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:Lablens/services/gemini_model_wrapper.dart';
 
 import '../utils/constants.dart';
 import 'loinc_mapper.dart';
 
 /// Gemini Service - Handles OCR and data extraction from blood reports
 class GeminiService {
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  GenerativeModel? _model;
+  FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  GenerativeModelWrapper? _model;
 
   /// Initialize Gemini model with API key
   Future<void> initialize() async {
@@ -27,7 +29,16 @@ class GeminiService {
         ) ??
         'gemini-2.5-flash';
 
-    _model = GenerativeModel(model: selectedModel, apiKey: apiKey);
+    _model =
+        GenerativeModelWrapperImpl(GenerativeModel(model: selectedModel, apiKey: apiKey));
+  }
+
+  /// Initialize for test
+  @visibleForTesting
+  void initializeForTest(
+      FlutterSecureStorage secureStorage, GenerativeModelWrapper model) {
+    _secureStorage = secureStorage;
+    _model = model;
   }
 
   /// Set API key in secure storage
@@ -55,7 +66,7 @@ class GeminiService {
     ];
 
     try {
-      final response = await _model!.generateContent(
+      final extractedText = await _model!.generateContentText(
         content,
         generationConfig: GenerationConfig(
           temperature: 0.1, // Low temperature for consistent output
@@ -63,7 +74,6 @@ class GeminiService {
         ),
       );
 
-      final extractedText = response.text;
       if (extractedText == null || extractedText.isEmpty) {
         throw Exception('No data extracted from the report');
       }
@@ -246,16 +256,20 @@ Return ONLY the JSON, nothing else.
   }
 
   /// Test API key validity
-  Future<bool> testApiKey(String apiKey) async {
+  @visibleForTesting
+  Future<bool> testApiKey(String apiKey,
+      {GenerativeModelWrapper? testModel}) async {
     try {
-      final testModel = GenerativeModel(
-        model: 'gemini-1.5-pro',
-        apiKey: apiKey,
-      );
+      final modelToTest = testModel ??
+          GenerativeModelWrapperImpl(GenerativeModel(
+            model: 'gemini-1.5-pro',
+            apiKey: apiKey,
+          ));
 
-      final response = await testModel.generateContent([Content.text('Hello')]);
+      final responseText =
+          await modelToTest.generateContentText([Content.text('Hello')]);
 
-      return response.text != null;
+      return responseText != null;
     } catch (e) {
       return false;
     }
@@ -304,7 +318,7 @@ Return ONLY the JSON, nothing else.
     );
 
     try {
-      final response = await _model!.generateContent(
+      final analysisText = await _model!.generateContentText(
         [Content.text(prompt)],
         generationConfig: GenerationConfig(
           temperature: 0.3,
@@ -312,7 +326,6 @@ Return ONLY the JSON, nothing else.
         ),
       );
 
-      final analysisText = response.text;
       if (analysisText == null || analysisText.isEmpty) {
         throw Exception('No analysis generated');
       }
@@ -439,7 +452,7 @@ Generate the analysis now:
     );
 
     try {
-      final response = await _model!.generateContent(
+      final analysisText = await _model!.generateContentText(
         [Content.text(prompt)],
         generationConfig: GenerationConfig(
           temperature: 0.3,
@@ -447,7 +460,6 @@ Generate the analysis now:
         ),
       );
 
-      final analysisText = response.text;
       if (analysisText == null || analysisText.isEmpty) {
         throw Exception('No trend analysis generated');
       }
