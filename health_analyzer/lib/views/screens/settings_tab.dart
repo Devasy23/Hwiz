@@ -152,23 +152,44 @@ class SettingsTab extends StatelessWidget {
       builder: (context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Section header with accent bar
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppTheme.spacing16,
-              AppTheme.spacing24,
+              AppTheme.spacing20,
               AppTheme.spacing16,
-              AppTheme.spacing8,
+              AppTheme.spacing12,
             ),
-            child: Text(
-              title,
-              style: AppTheme.labelLarge.copyWith(
-                color: AppTheme.textSecondary,
-              ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: context.primaryColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing8),
+                Text(
+                  title.toUpperCase(),
+                  style: AppTheme.labelLarge.copyWith(
+                    color: context.primaryColor,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
             ),
           ),
-          Container(
-            color: context.surfaceColor,
-            child: Column(children: children),
+          // Cards container
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing12),
+            child: Card(
+              elevation: 0,
+              margin: EdgeInsets.zero,
+              child: Column(children: children),
+            ),
           ),
         ],
       ),
@@ -183,26 +204,76 @@ class SettingsTab extends StatelessWidget {
     bool isDestructive = false,
   }) {
     return Builder(
-      builder: (context) => ListTile(
-        leading: Icon(
-          icon,
-          color: isDestructive ? AppTheme.errorColor : context.primaryColor,
-        ),
-        title: Text(
-          title,
-          style: AppTheme.bodyLarge.copyWith(
-            color: isDestructive ? AppTheme.errorColor : AppTheme.textPrimary,
+      builder: (context) {
+        final tileColor = isDestructive
+            ? context.errorColor.withAlpha(20)
+            : Colors.transparent;
+
+        final iconColor =
+            isDestructive ? context.errorColor : context.primaryColor;
+
+        final textColor =
+            isDestructive ? context.errorColor : context.onSurfaceColor;
+
+        return Material(
+          color: tileColor,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacing16,
+                vertical: AppTheme.spacing16,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing8),
+                    decoration: BoxDecoration(
+                      color: iconColor.withAlpha(25),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: isDestructive ? 26 : 24,
+                      color: iconColor,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacing16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: AppTheme.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: textColor,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: AppTheme.bodySmall.copyWith(
+                              color: context.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (onTap != null && !isDestructive)
+                    Icon(
+                      Icons.chevron_right,
+                      color: context.onSurfaceVariant,
+                      size: 20,
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
-        subtitle: subtitle != null
-            ? Text(
-                subtitle,
-                style: AppTheme.bodySmall,
-              )
-            : null,
-        trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
-        onTap: onTap,
-      ),
+        );
+      },
     );
   }
 

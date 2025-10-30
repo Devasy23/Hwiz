@@ -4,7 +4,6 @@ import '../../theme/app_theme.dart';
 import '../../theme/theme_extensions.dart';
 import '../../models/blood_report.dart';
 import '../../models/parameter.dart';
-import '../../widgets/common/status_badge.dart';
 import '../../widgets/common/profile_avatar.dart';
 import '../../services/gemini_service.dart';
 import '../../services/database_helper.dart';
@@ -19,11 +18,13 @@ import 'package:share_plus/share_plus.dart';
 class ReportDetailsScreen extends StatefulWidget {
   final BloodReport report;
   final String? profileName;
+  final String? heroTag;
 
   const ReportDetailsScreen({
     super.key,
     required this.report,
     this.profileName,
+    this.heroTag,
   });
 
   @override
@@ -284,67 +285,166 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   }
 
   Widget _buildSummaryCard(int normalCount, int abnormalCount) {
+    final hasAbnormal = abnormalCount > 0;
+
     return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacing20),
+        padding: const EdgeInsets.all(AppTheme.spacing16),
         child: Column(
           children: [
-            // Profile info
+            // Profile info (more compact)
             if (widget.profileName != null)
               Row(
                 children: [
-                  ProfileAvatar(
-                    name: widget.profileName!,
-                    size: 40,
+                  Hero(
+                    tag: 'profile_avatar_${widget.report.profileId}',
+                    child: ProfileAvatar(
+                      name: widget.profileName!,
+                      size: 48,
+                    ),
                   ),
                   const SizedBox(width: AppTheme.spacing12),
-                  Text(
-                    widget.profileName!,
-                    style: AppTheme.titleMedium,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.profileName!,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                        Text(
+                          '${widget.report.parameters.length} parameters tested',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
 
             if (widget.profileName != null)
-              const Divider(height: AppTheme.spacing24),
+              const SizedBox(height: AppTheme.spacing16),
 
-            // Stats
+            // Stats Row with improved design
             Row(
               children: [
                 Expanded(
-                  child: _buildStatColumn(
-                    'Total',
-                    '${widget.report.parameters.length}',
-                    Icons.analytics_outlined,
-                    context.primaryColor,
+                  child: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusMedium),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.analytics_rounded,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 28,
+                        ),
+                        const SizedBox(height: AppTheme.spacing8),
+                        Text(
+                          '${widget.report.parameters.length}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        Text(
+                          'Total',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: AppTheme.dividerColor,
-                ),
+                const SizedBox(width: AppTheme.spacing12),
                 Expanded(
-                  child: _buildStatColumn(
-                    'Normal',
-                    '$normalCount',
-                    Icons.check_circle_outline,
-                    AppTheme.successColor,
+                  child: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.healthNormal.withOpacity(0.2),
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusMedium),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: AppTheme.healthExcellent,
+                          size: 28,
+                        ),
+                        const SizedBox(height: AppTheme.spacing8),
+                        Text(
+                          '$normalCount',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: AppTheme.healthExcellent,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        Text(
+                          'Normal',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: AppTheme.dividerColor,
-                ),
+                const SizedBox(width: AppTheme.spacing12),
                 Expanded(
-                  child: _buildStatColumn(
-                    'Abnormal',
-                    '$abnormalCount',
-                    Icons.warning_amber_outlined,
-                    abnormalCount > 0
-                        ? AppTheme.errorColor
-                        : AppTheme.textTertiary,
+                  child: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                    decoration: BoxDecoration(
+                      color: hasAbnormal
+                          ? AppTheme.healthCritical.withOpacity(0.2)
+                          : Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusMedium),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: hasAbnormal
+                              ? AppTheme.healthCritical
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 28,
+                        ),
+                        const SizedBox(height: AppTheme.spacing8),
+                        Text(
+                          '$abnormalCount',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: hasAbnormal
+                                    ? AppTheme.healthCritical
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        Text(
+                          'Abnormal',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -352,38 +452,39 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
             const SizedBox(height: AppTheme.spacing16),
 
-            // Status indicator
+            // Alert banner (more prominent)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacing16,
-                vertical: AppTheme.spacing12,
-              ),
+              padding: const EdgeInsets.all(AppTheme.spacing12),
               decoration: BoxDecoration(
-                color: abnormalCount > 0
-                    ? AppTheme.errorLight
-                    : AppTheme.successLight,
+                color: hasAbnormal
+                    ? Theme.of(context).colorScheme.errorContainer
+                    : Theme.of(context).colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    abnormalCount > 0 ? Icons.warning : Icons.check_circle,
-                    color: abnormalCount > 0
-                        ? AppTheme.errorColor
-                        : AppTheme.successColor,
-                    size: 20,
+                    hasAbnormal
+                        ? Icons.warning_rounded
+                        : Icons.verified_rounded,
+                    color: hasAbnormal
+                        ? Theme.of(context).colorScheme.error
+                        : AppTheme.healthExcellent,
+                    size: 24,
                   ),
-                  const SizedBox(width: AppTheme.spacing8),
-                  Text(
-                    abnormalCount > 0
-                        ? 'Some values are outside normal range'
-                        : 'All values are within normal range',
-                    style: AppTheme.titleSmall.copyWith(
-                      color: abnormalCount > 0
-                          ? AppTheme.errorColor
-                          : AppTheme.successColor,
+                  const SizedBox(width: AppTheme.spacing12),
+                  Expanded(
+                    child: Text(
+                      hasAbnormal
+                          ? 'Some values are outside normal range'
+                          : 'All values are within normal range',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: hasAbnormal
+                                ? Theme.of(context).colorScheme.onErrorContainer
+                                : AppTheme.healthExcellent,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                   ),
                 ],
@@ -392,39 +493,27 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
             const SizedBox(height: AppTheme.spacing12),
 
-            // View AI Insights button
-            TextButton.icon(
+            // View AI Analysis - make it a filled tonal button
+            FilledButton.tonalIcon(
               onPressed: () {
                 setState(() {
                   _showAiInsights = !_showAiInsights;
                 });
+                if (_showAiInsights && _aiInsights == null) {
+                  _loadAiInsights();
+                }
               },
-              icon:
-                  Icon(_showAiInsights ? Icons.expand_less : Icons.expand_more),
-              label: const Text('View AI Analysis'),
+              icon: Icon(
+                  _showAiInsights ? Icons.visibility_off : Icons.auto_awesome),
+              label: Text(
+                  _showAiInsights ? 'Hide AI Analysis' : 'View AI Analysis'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 44),
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatColumn(
-      String label, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: AppTheme.spacing8),
-        Text(
-          value,
-          style: AppTheme.titleLarge.copyWith(color: color),
-        ),
-        const SizedBox(height: AppTheme.spacing4),
-        Text(
-          label,
-          style: AppTheme.labelSmall,
-        ),
-      ],
     );
   }
 
@@ -504,146 +593,221 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   }
 
   Widget _buildParameterCard(Parameter parameter) {
+    // Generate unique hero tag for parameter
+    final heroTag = 'parameter_${widget.report.id}_${parameter.parameterName}';
+
     return Builder(
       builder: (context) {
         final status = parameter.status;
         final colorScheme = Theme.of(context).colorScheme;
+        final isAbnormal = status != 'normal';
 
-        Color bgColor;
-        Color borderColor;
-        Color textColor;
-        StatusType badgeType;
+        Color cardColor;
+        Color accentColor;
+        IconData statusIcon;
 
         if (status == 'high') {
-          // Error state - red tinted surface
-          bgColor = Color.alphaBlend(
-            AppTheme.errorColor.withOpacity(0.12),
-            colorScheme.surface,
-          );
-          borderColor = AppTheme.errorColor;
-          textColor = colorScheme.onSurface;
-          badgeType = StatusType.high;
+          cardColor = colorScheme.errorContainer.withOpacity(0.5);
+          accentColor = colorScheme.error;
+          statusIcon = Icons.arrow_upward_rounded;
         } else if (status == 'low') {
-          // Warning state - orange/yellow tinted surface
-          bgColor = Color.alphaBlend(
-            AppTheme.warningColor.withOpacity(0.12),
-            colorScheme.surface,
-          );
-          borderColor = AppTheme.warningColor;
-          textColor = colorScheme.onSurface;
-          badgeType = StatusType.low;
+          cardColor = AppTheme.warningColor.withOpacity(0.15);
+          accentColor = AppTheme.warningColor;
+          statusIcon = Icons.arrow_downward_rounded;
         } else {
-          // Success state - green tinted surface
-          bgColor = Color.alphaBlend(
-            AppTheme.successColor.withOpacity(0.12),
-            colorScheme.surface,
-          );
-          borderColor = AppTheme.successColor;
-          textColor = colorScheme.onSurface;
-          badgeType = StatusType.normal;
+          cardColor = AppTheme.healthNormal.withOpacity(0.15);
+          accentColor = AppTheme.healthExcellent;
+          statusIcon = Icons.check_circle_rounded;
         }
 
-        return Container(
-          margin: const EdgeInsets.fromLTRB(
-            AppTheme.spacing16,
-            0,
-            AppTheme.spacing16,
-            AppTheme.spacing12,
-          ),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            border: Border.all(color: borderColor.withOpacity(0.3), width: 1),
-          ),
-          child: InkWell(
-            onTap: () {
-              // Navigate to parameter trend screen
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => ParameterTrendScreen(
-                    profileId: widget.report.profileId,
-                    profileName: widget.profileName ?? 'Profile',
-                    initialParameter: parameter.parameterName,
+        return Hero(
+          tag: heroTag,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Card(
+              margin: const EdgeInsets.fromLTRB(
+                AppTheme.spacing16,
+                0,
+                AppTheme.spacing16,
+                AppTheme.spacing8,
+              ),
+              elevation: isAbnormal ? 2 : 0,
+              color: cardColor,
+              child: InkWell(
+                onTap: () {
+                  // Navigate to parameter trend screen
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ParameterTrendScreen(
+                        profileId: widget.report.profileId,
+                        profileName: widget.profileName ?? 'Profile',
+                        initialParameter: parameter.parameterName,
+                        heroTag: heroTag,
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: accentColor,
+                        width: 4,
+                      ),
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(AppTheme.radiusMedium),
+                      bottomLeft: Radius.circular(AppTheme.radiusMedium),
+                    ),
                   ),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spacing16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppTheme.spacing16),
+                    child: Row(
                       children: [
-                        Text(
-                          _formatParameterName(parameter.rawParameterName ??
-                              parameter.parameterName),
-                          style: AppTheme.titleSmall.copyWith(color: textColor),
-                        ),
-                        const SizedBox(height: AppTheme.spacing8),
-                        Row(
-                          children: [
-                            Text(
-                              '${parameter.parameterValue}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall!
-                                  .copyWith(
-                                    fontSize: 20,
-                                    color: textColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                            if (parameter.unit != null) ...[
-                              const SizedBox(width: AppTheme.spacing4),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Parameter name
                               Text(
-                                parameter.unit!,
+                                _formatParameterName(
+                                    parameter.rawParameterName ??
+                                        parameter.parameterName),
                                 style: Theme.of(context)
                                     .textTheme
-                                    .bodyMedium!
-                                    .copyWith(
-                                      color: textColor.withOpacity(0.8),
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
                                     ),
                               ),
+                              const SizedBox(height: AppTheme.spacing12),
+                              // Value with larger font
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    '${parameter.parameterValue}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium!
+                                        .copyWith(
+                                          color: isAbnormal
+                                              ? accentColor
+                                              : colorScheme.onSurface,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                  if (parameter.unit != null) ...[
+                                    const SizedBox(width: AppTheme.spacing4),
+                                    Text(
+                                      parameter.unit!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall!
+                                          .copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              if (parameter.referenceRangeMin != null &&
+                                  parameter.referenceRangeMax != null) ...[
+                                const SizedBox(height: AppTheme.spacing8),
+                                Text(
+                                  'Normal: ${parameter.referenceRangeMin} - ${parameter.referenceRangeMax}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall!
+                                      .copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
                             ],
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.spacing12),
+                        // Status badge and trend icon
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacing12,
+                                vertical: AppTheme.spacing8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.2),
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusSmall),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    statusIcon,
+                                    size: 16,
+                                    color: accentColor,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacing4),
+                                  Text(
+                                    status == 'high'
+                                        ? 'High'
+                                        : status == 'low'
+                                            ? 'Low'
+                                            : 'Normal',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: accentColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: AppTheme.spacing12),
+                            // Trend button
+                            Container(
+                              padding: const EdgeInsets.all(AppTheme.spacing8),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest,
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusSmall),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.show_chart,
+                                    size: 16,
+                                    color: colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacing4),
+                                  Text(
+                                    'Trend',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                        if (parameter.referenceRangeMin != null &&
-                            parameter.referenceRangeMax != null) ...[
-                          const SizedBox(height: AppTheme.spacing4),
-                          Text(
-                            'Range: ${parameter.referenceRangeMin} - ${parameter.referenceRangeMax}',
-                            style:
-                                Theme.of(context).textTheme.bodySmall!.copyWith(
-                                      color: textColor.withOpacity(0.7),
-                                    ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      StatusBadge(
-                        label: status == 'high'
-                            ? 'High'
-                            : status == 'low'
-                                ? 'Low'
-                                : 'Normal',
-                        type: badgeType,
-                      ),
-                      const SizedBox(height: AppTheme.spacing8),
-                      Icon(
-                        Icons.trending_up,
-                        size: 20,
-                        color: textColor.withOpacity(0.6),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),

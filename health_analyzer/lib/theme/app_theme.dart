@@ -10,24 +10,36 @@ class AppTheme {
 
   // ============ BRAND COLORS (Fallback when dynamic colors not available) ============
 
-  // Primary Brand Colors
-  static const Color primaryColor = Color(0xFF2563EB); // Modern blue
-  static const Color primaryDark = Color(0xFF1E40AF);
-  static const Color primaryLight = Color(0xFF60A5FA);
+  // Primary Brand Colors - Medical Teal for trust, clarity, and science
+  static const Color primaryColor =
+      Color(0xFF0891B2); // Medical teal (cyan-600)
+  static const Color primaryDark = Color(0xFF0E7490); // Darker teal (cyan-700)
+  static const Color primaryLight =
+      Color(0xFF06B6D4); // Lighter teal (cyan-500)
 
   // Secondary Colors
-  static const Color secondaryColor = Color(0xFF8B5CF6); // Purple accent
-  static const Color accentColor = Color(0xFF06B6D4); // Cyan accent
+  static const Color secondaryColor =
+      Color(0xFF8B5CF6); // Purple accent (AI/intelligence)
+  static const Color accentColor = Color(0xFF14B8A6); // Teal accent (teal-500)
 
-  // Status Colors
-  static const Color successColor = Color(0xFF10B981); // Green
+  // Health Status Colors - Semantic colors for medical data
+  static const Color healthExcellent = Color(0xFF10B981); // Green (emerald-500)
+  static const Color healthGood =
+      Color(0xFF34D399); // Light green (emerald-400)
+  static const Color healthNormal =
+      Color(0xFF6EE7B7); // Mint green (emerald-300)
+  static const Color healthWarning = Color(0xFFF59E0B); // Orange (amber-500)
+  static const Color healthCritical = Color(0xFFDC2626); // Red (red-600)
+
+  // Status Colors (Legacy support)
+  static const Color successColor = healthExcellent;
   static const Color successLight = Color(0xFFD1FAE5);
-  static const Color warningColor = Color(0xFFF59E0B); // Orange
+  static const Color warningColor = healthWarning;
   static const Color warningLight = Color(0xFFFEF3C7);
-  static const Color errorColor = Color(0xFFEF4444); // Red
+  static const Color errorColor = healthCritical;
   static const Color errorLight = Color(0xFFFEE2E2);
-  static const Color infoColor = Color(0xFF3B82F6); // Light blue
-  static const Color infoLight = Color(0xFFDBEAFE);
+  static const Color infoColor = Color(0xFF0EA5E9); // Sky blue (sky-500)
+  static const Color infoLight = Color(0xFFE0F2FE);
 
   // Neutral Colors
   static const Color textPrimary = Color(0xFF111827);
@@ -38,18 +50,55 @@ class AppTheme {
   static const Color cardBackground = Color(0xFFFFFFFF);
   static const Color surfaceColor = Color(0xFFFFFFFF);
 
-  // Dark Theme Colors
-  static const Color darkBackground = Color(0xFF111827);
-  static const Color darkSurface = Color(0xFF1F2937);
-  static const Color darkCard = Color(0xFF374151);
+  // Dark Theme Colors - Softer than pure black
+  static const Color darkBackground = Color(0xFF1E1E1E); // Softer dark
+  static const Color darkSurface = Color(0xFF232323);
+  static const Color darkCard = Color(0xFF2B2B2B);
   static const Color darkTextPrimary = Color(0xFFF9FAFB);
   static const Color darkTextSecondary = Color(0xFFD1D5DB);
 
   // ============ TYPOGRAPHY ============
 
-  static const String fontFamily = 'Inter'; // Can be changed to system default
+  // Font families
+  static const String displayFontFamily = 'Poppins'; // For branding/titles
+  static const String fontFamily = 'Inter'; // For body text
 
+  // Display styles - For branding and large titles
+  static const TextStyle displayLarge = TextStyle(
+    fontFamily: displayFontFamily,
+    fontSize: 57,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.25,
+    height: 1.12,
+  );
+
+  static const TextStyle displayMedium = TextStyle(
+    fontFamily: displayFontFamily,
+    fontSize: 45,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+    height: 1.16,
+  );
+
+  static const TextStyle displaySmall = TextStyle(
+    fontFamily: displayFontFamily,
+    fontSize: 36,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+    height: 1.22,
+  );
+
+  // Brand title - Specific for LabLens branding
+  static const TextStyle brandTitle = TextStyle(
+    fontFamily: displayFontFamily,
+    fontSize: 28,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.5,
+  );
+
+  // Heading styles - For section headers
   static const TextStyle headingLarge = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 32,
     fontWeight: FontWeight.bold,
     letterSpacing: -0.5,
@@ -731,5 +780,38 @@ class AppTheme {
         size: 24,
       ),
     );
+  }
+}
+
+/// Extension for LabLens-specific health colors
+extension LabLensColors on ColorScheme {
+  // Health status colors
+  Color get healthExcellent => AppTheme.healthExcellent;
+  Color get healthGood => AppTheme.healthGood;
+  Color get healthNormal => AppTheme.healthNormal;
+  Color get healthWarning => AppTheme.healthWarning;
+  Color get healthCritical => AppTheme.healthCritical;
+
+  // Surface elevation variations for better depth
+  Color get surfaceContainerLowest => brightness == Brightness.light
+      ? Color.alphaBlend(primary.withOpacity(0.05), surface)
+      : const Color(0xFF121212);
+
+  Color get surfaceContainerLower => brightness == Brightness.light
+      ? Color.alphaBlend(primary.withOpacity(0.08), surface)
+      : const Color(0xFF1A1A1A);
+
+  // Helper to get status color based on condition
+  Color getHealthStatusColor({
+    required bool isNormal,
+    required bool isLow,
+    required bool isHigh,
+    bool isCritical = false,
+  }) {
+    if (isCritical) return healthCritical;
+    if (!isNormal) {
+      if (isLow || isHigh) return healthWarning;
+    }
+    return healthNormal;
   }
 }

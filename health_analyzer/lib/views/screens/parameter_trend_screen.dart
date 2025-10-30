@@ -11,12 +11,14 @@ class ParameterTrendScreen extends StatefulWidget {
   final int profileId;
   final String profileName;
   final String? initialParameter;
+  final String? heroTag;
 
   const ParameterTrendScreen({
     super.key,
     required this.profileId,
     required this.profileName,
     this.initialParameter,
+    this.heroTag,
   });
 
   @override
@@ -239,22 +241,26 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
   }
 
   Widget _buildContent() {
-    return Column(
-      children: [
-        // Parameter selector
-        _buildParameterSelector(),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Parameter selector
+          _buildParameterSelector(),
 
-        // Time range selector
-        _buildTimeRangeSelector(),
+          // Time range selector
+          _buildTimeRangeSelector(),
 
-        // Chart
-        Expanded(
-          child: _trendData.isEmpty ? _buildNoTrendDataView() : _buildChart(),
-        ),
+          // Chart
+          if (_trendData.isNotEmpty) _buildChart(),
+          if (_trendData.isEmpty) _buildNoTrendDataView(),
 
-        // Statistics summary
-        if (_trendData.isNotEmpty) _buildStatisticsSummary(),
-      ],
+          // Statistics summary
+          if (_trendData.isNotEmpty) _buildStatisticsSummary(),
+
+          // Bottom padding
+          const SizedBox(height: AppTheme.spacing24),
+        ],
+      ),
     );
   }
 
@@ -291,38 +297,58 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
 
   Widget _buildTimeRangeSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacing16,
+        vertical: AppTheme.spacing8,
+      ),
       child: Card(
+        elevation: 0,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildTimeRangeChip('3M', '3months'),
-              _buildTimeRangeChip('6M', '6months'),
-              _buildTimeRangeChip('1Y', '1year'),
-              _buildTimeRangeChip('All', 'all'),
+          padding: const EdgeInsets.all(AppTheme.spacing12),
+          child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment<String>(
+                value: '3months',
+                label: Text('3M'),
+              ),
+              ButtonSegment<String>(
+                value: '6months',
+                label: Text('6M'),
+              ),
+              ButtonSegment<String>(
+                value: '1year',
+                label: Text('1Y'),
+              ),
+              ButtonSegment<String>(
+                value: 'all',
+                label: Text('All'),
+              ),
             ],
+            selected: {_selectedTimeRange},
+            onSelectionChanged: (Set<String> newSelection) {
+              setState(() {
+                _selectedTimeRange = newSelection.first;
+                _loadTrendData();
+              });
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Theme.of(context).colorScheme.primary;
+                }
+                return Theme.of(context).colorScheme.surface;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Theme.of(context).colorScheme.onPrimary;
+                }
+                return Theme.of(context).colorScheme.onSurface;
+              }),
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTimeRangeChip(String label, String value) {
-    final isSelected = _selectedTimeRange == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _selectedTimeRange = value;
-          _loadTrendData();
-        });
-      },
-      backgroundColor: Colors.grey[200],
-      selectedColor: Theme.of(context).colorScheme.primaryContainer,
-      checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
     );
   }
 
@@ -366,12 +392,15 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(AppTheme.spacing16),
       child: Card(
+        elevation: 0,
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(AppTheme.spacing16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 _formatParameterName(_selectedParameter!),
@@ -379,7 +408,7 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.spacing4),
               Text(
                 '${_trendData.length} data points',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -389,8 +418,9 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
                           .withOpacity(0.6),
                     ),
               ),
-              const SizedBox(height: 24),
-              Expanded(
+              const SizedBox(height: AppTheme.spacing16),
+              SizedBox(
+                height: 280,
                 child: _buildLineChart(),
               ),
             ],
@@ -453,13 +483,15 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
               ((chartMaxY - chartMinY) / 5).clamp(0.1, double.infinity),
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.grey[300],
+              color:
+                  Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
               strokeWidth: 1,
             );
           },
           getDrawingVerticalLine: (value) {
             return FlLine(
-              color: Colors.grey[300],
+              color:
+                  Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
               strokeWidth: 1,
             );
           },
@@ -468,7 +500,7 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 40,
+              reservedSize: 32,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
                 if (index < 0 || index >= dates.length) {
@@ -478,7 +510,9 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     DateFormat('MMM\ndd').format(dates[index]),
-                    style: const TextStyle(fontSize: 10),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 10,
+                        ),
                     textAlign: TextAlign.center,
                   ),
                 );
@@ -488,11 +522,13 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 50,
+              reservedSize: 45,
               getTitlesWidget: (value, meta) {
                 return Text(
                   value.toStringAsFixed(1),
-                  style: const TextStyle(fontSize: 10),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                      ),
                 );
               },
             ),
@@ -506,12 +542,16 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
         ),
         borderData: FlBorderData(
           show: true,
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            width: 1,
+          ),
         ),
         lineBarsData: [
           LineChartBarData(
             spots: spots,
             isCurved: true,
+            curveSmoothness: 0.3,
             color: Theme.of(context).colorScheme.primary,
             barWidth: 3,
             isStrokeCapRound: true,
@@ -525,11 +565,13 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
                 }
 
                 return FlDotCirclePainter(
-                  radius: 6,
-                  color: isAbnormal ? Colors.red : Colors.white,
+                  radius: 5,
+                  color: isAbnormal
+                      ? AppTheme.healthCritical
+                      : Theme.of(context).colorScheme.surface,
                   strokeWidth: 2,
                   strokeColor: isAbnormal
-                      ? Colors.red
+                      ? AppTheme.healthCritical
                       : Theme.of(context).colorScheme.primary,
                 );
               },
@@ -545,30 +587,34 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
                 horizontalLines: [
                   HorizontalLine(
                     y: refMin.toDouble(),
-                    color: Colors.orange.withOpacity(0.5),
+                    color: AppTheme.healthWarning.withOpacity(0.6),
                     strokeWidth: 2,
                     dashArray: [5, 5],
                     label: HorizontalLineLabel(
                       show: true,
                       alignment: Alignment.topRight,
-                      style: const TextStyle(
+                      padding: const EdgeInsets.only(right: 4, bottom: 4),
+                      style: TextStyle(
                         fontSize: 10,
-                        color: Colors.orange,
+                        color: AppTheme.healthWarning,
+                        fontWeight: FontWeight.w600,
                       ),
                       labelResolver: (line) => 'Min: ${refMin.toString()}',
                     ),
                   ),
                   HorizontalLine(
                     y: refMax.toDouble(),
-                    color: Colors.orange.withOpacity(0.5),
+                    color: AppTheme.healthWarning.withOpacity(0.6),
                     strokeWidth: 2,
                     dashArray: [5, 5],
                     label: HorizontalLineLabel(
                       show: true,
                       alignment: Alignment.bottomRight,
-                      style: const TextStyle(
+                      padding: const EdgeInsets.only(right: 4, top: 4),
+                      style: TextStyle(
                         fontSize: 10,
-                        color: Colors.orange,
+                        color: AppTheme.healthWarning,
+                        fontWeight: FontWeight.w600,
                       ),
                       labelResolver: (line) => 'Max: ${refMax.toString()}',
                     ),
@@ -578,6 +624,9 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
             : null,
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (touchedSpot) =>
+                Theme.of(context).colorScheme.inverseSurface,
+            tooltipPadding: const EdgeInsets.all(12),
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final index = spot.x.toInt();
@@ -587,16 +636,18 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
 
                 return LineTooltipItem(
                   '${DateFormat('MMM dd, yyyy').format(date)}\n',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  TextStyle(
+                    color: Theme.of(context).colorScheme.onInverseSurface,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                   children: [
                     TextSpan(
                       text: '${value.toStringAsFixed(2)} $unit',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onInverseSurface,
                         fontSize: 14,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -604,6 +655,8 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
               }).toList();
             },
           ),
+          handleBuiltInTouches: true,
+          touchSpotThreshold: 20,
         ),
       ),
     );
@@ -629,86 +682,186 @@ class _ParameterTrendScreenState extends State<ParameterTrendScreen> {
     final isTrendUp = trendPercent > 0;
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      child: Card(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(AppTheme.spacing16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header
+          Row(
             children: [
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: AppTheme.spacing8),
               Text(
                 'Statistics',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatItem('Latest', latest, unit, Colors.blue),
-                  _buildStatItem('Average', avg, unit, Colors.green),
-                  _buildStatItem('Min', min, unit, Colors.orange),
-                  _buildStatItem('Max', max, unit, Colors.red),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isTrendUp
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isTrendUp ? Icons.trending_up : Icons.trending_down,
-                      color: isTrendUp ? Colors.green : Colors.red,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Trend: ${trendPercent.abs().toStringAsFixed(1)}% ${isTrendUp ? 'increase' : 'decrease'}',
-                      style: TextStyle(
-                        color: isTrendUp ? Colors.green : Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: AppTheme.spacing16),
+          // Stats Grid with color-coded cards
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: AppTheme.spacing12,
+            crossAxisSpacing: AppTheme.spacing12,
+            childAspectRatio: 1.6,
+            children: [
+              _buildEnhancedStatCard(
+                'Latest',
+                latest,
+                unit,
+                Icons.fiber_manual_record,
+                Theme.of(context).colorScheme.primary,
+              ),
+              _buildEnhancedStatCard(
+                'Average',
+                avg,
+                unit,
+                Icons.timeline,
+                AppTheme.healthGood,
+              ),
+              _buildEnhancedStatCard(
+                'Min',
+                min,
+                unit,
+                Icons.arrow_downward_rounded,
+                AppTheme.healthWarning,
+              ),
+              _buildEnhancedStatCard(
+                'Max',
+                max,
+                unit,
+                Icons.arrow_upward_rounded,
+                AppTheme.healthCritical,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.spacing16),
+          // Trend indicator with improved design
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppTheme.spacing16),
+            decoration: BoxDecoration(
+              color: isTrendUp
+                  ? AppTheme.healthCritical.withOpacity(0.15)
+                  : AppTheme.healthExcellent.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(
+                color: isTrendUp
+                    ? AppTheme.healthCritical
+                    : AppTheme.healthExcellent,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacing8),
+                  decoration: BoxDecoration(
+                    color: isTrendUp
+                        ? AppTheme.healthCritical.withOpacity(0.2)
+                        : AppTheme.healthExcellent.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isTrendUp ? Icons.trending_up : Icons.trending_down,
+                    color: isTrendUp
+                        ? AppTheme.healthCritical
+                        : AppTheme.healthExcellent,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Overall Trend',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    Text(
+                      '${trendPercent.abs().toStringAsFixed(1)}% ${isTrendUp ? 'increase' : 'decrease'}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: isTrendUp
+                                ? AppTheme.healthCritical
+                                : AppTheme.healthExcellent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, double value, String unit, Color color) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
+  Widget _buildEnhancedStatCard(
+    String label,
+    double value,
+    String unit,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(0.15),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.spacing12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                Icon(
+                  icon,
+                  size: 20,
+                  color: color,
+                ),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value.toStringAsFixed(1),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                Text(
+                  unit,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          value.toStringAsFixed(1),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-        ),
-        Text(
-          unit,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+      ),
     );
   }
 

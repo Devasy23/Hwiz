@@ -19,12 +19,23 @@ class HomeTab extends StatefulWidget {
   State<HomeTab> createState() => _HomeTabState();
 }
 
-class _HomeTabState extends State<HomeTab> {
+class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
   Profile? _lastLoadedProfile;
+  late AnimationController _animationController;
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     // Initial load will happen in didChangeDependencies
   }
 
@@ -47,6 +58,9 @@ class _HomeTabState extends State<HomeTab> {
           '📊 Loading reports for profile: ${currentProfile.name} (ID: ${currentProfile.id})');
       _lastLoadedProfile = currentProfile;
       reportVM.loadReportsForProfile(currentProfile.id!);
+
+      // Restart animations when content changes
+      _animationController.forward(from: 0.0);
     }
   }
 
@@ -121,26 +135,50 @@ class _HomeTabState extends State<HomeTab> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToScan,
-        icon: const Icon(Icons.add),
-        label: const Text('Scan Report'),
+      floatingActionButton: ScaleTransition(
+        scale: CurvedAnimation(
+          parent: _animationController,
+          curve: Curves.elasticOut,
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _navigateToScan,
+          icon: const Icon(Icons.document_scanner_outlined, size: 24),
+          label: const Text(
+            'Scan Report',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          elevation: 3,
+        ),
       ),
     );
   }
 
   Widget _buildTopBar() {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacing16),
-      color: Theme.of(context).colorScheme.surface,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacing16,
+        vertical: AppTheme.spacing12,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color:
+                Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         children: [
-          // App logo/name
+          // App logo/name with brand styling
           Text(
             'LabLens',
-            style: AppTheme.headingMedium.copyWith(
+            style: AppTheme.brandTitle.copyWith(
               color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
             ),
           ),
           const Spacer(),
@@ -154,47 +192,79 @@ class _HomeTabState extends State<HomeTab> {
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Compare button
+                  // Compare button with improved visibility
                   if (hasReports && reportVM.reports.length >= 2)
-                    IconButton(
-                      icon: const Icon(Icons.compare_arrows),
-                      tooltip: 'Compare Reports',
+                    FilledButton.tonalIcon(
                       onPressed: () => _navigateToCompare(profile!),
+                      icon: const Icon(Icons.compare_arrows, size: 20),
+                      label: const Text('Compare'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacing12,
+                          vertical: AppTheme.spacing8,
+                        ),
+                      ),
                     ),
 
-                  const SizedBox(width: AppTheme.spacing8),
+                  const SizedBox(width: AppTheme.spacing12),
                 ],
               );
             },
           ),
 
-          // Profile switcher
+          // Profile switcher with improved touch target
           Consumer<ProfileViewModel>(
             builder: (context, profileVM, child) {
               final profile = profileVM.currentProfile;
 
               if (profile == null) {
                 return IconButton(
-                  icon: const Icon(Icons.person_add),
+                  icon: const Icon(Icons.person_add, size: 28),
                   onPressed: _showProfileSwitcher,
+                  tooltip: 'Add Profile',
                 );
               }
 
-              return GestureDetector(
+              return InkWell(
                 onTap: _showProfileSwitcher,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ProfileAvatar(
-                      name: profile.name,
-                      size: 40,
-                    ),
-                    const SizedBox(height: AppTheme.spacing4),
-                    Text(
-                      profile.name.split(' ')[0],
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ProfileAvatar(
+                        name: profile.name,
+                        size: 40,
+                      ),
+                      const SizedBox(width: AppTheme.spacing8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            profile.name.split(' ')[0],
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          Text(
+                            'Tap to switch',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  fontSize: 10,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const Icon(Icons.arrow_drop_down, size: 20),
+                    ],
+                  ),
                 ),
               );
             },
@@ -207,27 +277,67 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildProfileContent(Profile profile, ReportViewModel reportVM) {
     return CustomScrollView(
       slivers: [
-        // Profile Summary Card
+        // Profile Summary Card with fade-in animation
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacing16),
-            child: _buildProfileSummaryCard(profile, reportVM),
-          ),
-        ),
+          child: AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              final fadeAnimation = Tween<double>(
+                begin: 0.0,
+                end: 1.0,
+              ).animate(
+                CurvedAnimation(
+                  parent: _animationController,
+                  curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
+                ),
+              );
 
-        // Recent Reports
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing16),
-            child: Text(
-              'Recent Reports',
-              style: Theme.of(context).textTheme.headlineSmall,
+              return FadeTransition(
+                opacity: fadeAnimation,
+                child: child,
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.spacing16,
+                AppTheme.spacing12,
+                AppTheme.spacing16,
+                0,
+              ),
+              child: _buildProfileSummaryCard(profile, reportVM),
             ),
           ),
         ),
 
-        const SliverToBoxAdapter(
-          child: SizedBox(height: AppTheme.spacing12),
+        // Recent Reports Section Header
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.spacing16,
+              AppTheme.spacing20,
+              AppTheme.spacing16,
+              AppTheme.spacing12,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing12),
+                Text(
+                  'Recent Reports',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ),
+          ),
         ),
 
         // Reports List or Empty State
@@ -244,12 +354,41 @@ class _HomeTabState extends State<HomeTab> {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final report = reportVM.reports[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacing16,
-                    vertical: AppTheme.spacing8,
+
+                // Staggered animation for each card
+                final delay = index * 0.1; // 100ms delay between cards
+                final animation = Tween<double>(
+                  begin: 0.0,
+                  end: 1.0,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _animationController,
+                    curve: Interval(
+                      delay.clamp(0.0, 0.8),
+                      (delay + 0.3).clamp(0.2, 1.0),
+                      curve: Curves.easeOutCubic,
+                    ),
                   ),
-                  child: _buildReportCard(report),
+                );
+
+                return AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 20 * (1 - animation.value)),
+                      child: Opacity(
+                        opacity: animation.value,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacing16,
+                      vertical: AppTheme.spacing4,
+                    ),
+                    child: _buildReportCard(report),
+                  ),
                 );
               },
               childCount: reportVM.reports.length,
@@ -269,17 +408,43 @@ class _HomeTabState extends State<HomeTab> {
         ? _calculateAge(DateTime.parse(profile.dateOfBirth!))
         : null;
 
+    // Calculate abnormal count
+    int abnormalCount = 0;
+    if (reportVM.reports.isNotEmpty) {
+      for (final param in reportVM.reports.first.parameters) {
+        if (!param.isNormal) abnormalCount++;
+      }
+    }
+
     return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spacing16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                ProfileAvatar(
-                  name: profile.name,
-                  size: 60,
+                // Larger, more prominent avatar with Hero animation
+                Hero(
+                  tag: 'profile_avatar_${profile.id}',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primaryContainer,
+                          Theme.of(context).colorScheme.secondaryContainer,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: ProfileAvatar(
+                      name: profile.name,
+                      size: 72,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: AppTheme.spacing16),
                 Expanded(
@@ -288,46 +453,83 @@ class _HomeTabState extends State<HomeTab> {
                     children: [
                       Text(
                         profile.name,
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                       ),
                       const SizedBox(height: AppTheme.spacing4),
-                      Text(
-                        [
-                          if (age != null) '$age years',
-                          if (profile.relationship != null)
-                            profile.relationship!,
-                        ].where((s) => s.isNotEmpty).join(' • '),
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      Row(
+                        children: [
+                          if (profile.gender != null) ...[
+                            Icon(
+                              profile.gender?.toLowerCase() == 'male'
+                                  ? Icons.male
+                                  : Icons.female,
+                              size: 16,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                            const SizedBox(width: AppTheme.spacing4),
+                          ],
+                          Text(
+                            [
+                              if (age != null) '$age years',
+                            ].where((s) => s.isNotEmpty).join(' • '),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () {
-                    // TODO: Navigate to edit profile
-                  },
-                ),
               ],
             ),
             const SizedBox(height: AppTheme.spacing16),
-            const Divider(),
-            const SizedBox(height: AppTheme.spacing12),
+            // Stats grid with improved design
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem(
-                  'Total Reports',
-                  '${reportVM.reports.length}',
-                  Icons.description,
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    'Total Reports',
+                    '${reportVM.reports.length}',
+                    Icons.description_rounded,
+                    Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-                _buildStatItem(
-                  'Last Test',
-                  reportVM.reports.isNotEmpty
-                      ? _formatDate(reportVM.reports.first.testDate)
-                      : 'N/A',
-                  Icons.calendar_today,
+                const SizedBox(width: AppTheme.spacing12),
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    'Last Test',
+                    reportVM.reports.isNotEmpty
+                        ? _formatDate(reportVM.reports.first.testDate)
+                        : 'N/A',
+                    Icons.calendar_today_rounded,
+                    Theme.of(context).colorScheme.secondary,
+                  ),
                 ),
+                if (reportVM.reports.isNotEmpty && abnormalCount > 0) ...[
+                  const SizedBox(width: AppTheme.spacing12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Abnormal',
+                      '$abnormalCount',
+                      Icons.warning_amber_rounded,
+                      Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
               ],
             ),
           ],
@@ -336,81 +538,222 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Builder(
-      builder: (context) {
-        final colorScheme = Theme.of(context).colorScheme;
-        return Column(
-          children: [
-            Icon(icon, color: colorScheme.primary, size: 24),
-            const SizedBox(height: AppTheme.spacing8),
+  Widget _buildStatCard(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    // Check if value is a number for animation
+    final numValue = int.tryParse(value);
+    final shouldAnimate = numValue != null;
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacing12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: AppTheme.spacing8),
+          // Animated counting for numeric values
+          if (shouldAnimate)
+            TweenAnimationBuilder<int>(
+              tween: IntTween(begin: 0, end: numValue),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, animValue, child) {
+                return Text(
+                  '$animValue',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                      ),
+                );
+              },
+            )
+          else
             Text(
               value,
-              style: AppTheme.titleMedium.copyWith(
-                color: colorScheme.primary,
-              ),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
-            const SizedBox(height: AppTheme.spacing4),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        );
-      },
+          const SizedBox(height: AppTheme.spacing4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildReportCard(dynamic report) {
     final profile = context.read<ProfileViewModel>().currentProfile;
 
-    return Card(
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ReportDetailsScreen(
-                report: report,
-                profileName: profile?.name,
-              ),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacing16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    // Calculate report stats
+    int abnormalCount = 0;
+    for (final param in report.parameters) {
+      if (!param.isNormal) abnormalCount++;
+    }
+
+    final hasAbnormal = abnormalCount > 0;
+    final statusColor = hasAbnormal
+        ? Theme.of(context).colorScheme.error
+        : AppTheme.healthNormal;
+
+    // Generate unique hero tag for this report
+    final heroTag = 'report_card_${report.id}_${report.testDate}';
+
+    return Hero(
+      tag: heroTag,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Card(
+          elevation: hasAbnormal ? 1 : 0,
+          color: hasAbnormal
+              ? Theme.of(context).colorScheme.errorContainer.withOpacity(0.2)
+              : null,
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ReportDetailsScreen(
+                    report: report,
+                    profileName: profile?.name,
+                    heroTag: heroTag,
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacing16),
+              child: Row(
                 children: [
+                  // Status indicator bar
+                  Container(
+                    width: 4,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacing16),
+                  // Report content
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _formatFullDate(report.testDate),
-                          style: Theme.of(context).textTheme.titleMedium,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _formatFullDate(report.testDate),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ),
+                            // Status badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacing8,
+                                vertical: AppTheme.spacing4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.2),
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusSmall),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    hasAbnormal
+                                        ? Icons.warning_amber_rounded
+                                        : Icons.check_circle_rounded,
+                                    size: 14,
+                                    color: statusColor,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacing4),
+                                  Text(
+                                    hasAbnormal
+                                        ? '$abnormalCount abnormal'
+                                        : 'Normal',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: statusColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         if (report.labName?.isNotEmpty ?? false) ...[
                           const SizedBox(height: AppTheme.spacing4),
                           Text(
-                            report.labName!,
-                            style: Theme.of(context).textTheme.bodySmall,
+                            report.labName!.toUpperCase(),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  letterSpacing: 0.5,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
                           ),
                         ],
+                        const SizedBox(height: AppTheme.spacing8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.science_outlined,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: AppTheme.spacing4),
+                            Text(
+                              '${report.parameters.length} parameters',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right),
+                  // Chevron icon
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacing12),
-              Text(
-                '${report.parameters.length} parameters',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+            ),
           ),
         ),
       ),
