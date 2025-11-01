@@ -1516,7 +1516,736 @@ class AnalysisProgressWidget extends StatelessWidget {
 
 ---
 
-**Document Version:** 1.0  
+## 🤖 BONUS: Local AI Model Implementation Guide
+
+### Overview: Gemma Local Processing in Shots Studio
+
+Shots Studio implements **on-device AI processing** using Google's Gemma model via the `flutter_gemma` package. This provides:
+
+- ✅ **Privacy:** No data leaves the device
+- ✅ **Offline:** Works without internet
+- ✅ **Cost:** No API costs
+- ❌ **Tradeoff:** Larger app size, requires powerful device
+
+### Architecture: Gemma Implementation
+
+```
+┌────────────────────────────────────────────────────┐
+│         AIServiceManager (Coordinator)             │
+└────────────────────────────────────────────────────┘
+                        │
+        ┌───────────────┴────────────────┐
+        │                                │
+┌───────▼──────────┐          ┌─────────▼──────────┐
+│ GeminiAPIProvider│          │ GemmaAPIProvider   │
+│  (Cloud - HTTP)  │          │  (Local - On-device)│
+└──────────────────┘          └─────────┬───────────┘
+                                        │
+                              ┌─────────▼──────────┐
+                              │   GemmaService     │
+                              │ (Model Management) │
+                              └─────────┬──────────┘
+                                        │
+                              ┌─────────▼──────────┐
+                              │ GemmaDownloadService│
+                              │ (Model Downloads)  │
+                              └────────────────────┘
+```
+
+### Key Components
+
+#### 1. Flutter Gemma Package Integration
+
+**Package:** `flutter_gemma: ^0.10.0`
+
+**Capabilities:**
+- Multimodal support (text + image)
+- CPU and GPU backends
+- Streaming and non-streaming responses
+- Memory-efficient model loading
+- Int4 quantization (smaller model size)
+
+#### 2. GemmaService Implementation
+
+**File:** `lib/services/gemma_service.dart` (540 lines)
+
+**Key Features:**
+
+```dart
+class GemmaService {
+  FlutterGemmaPlugin? _gemma;
+  ModelFileManager? _modelManager;
+  InferenceModel? _inferenceModel;
+  InferenceModelSession? _session;
+  
+  // Memory management
+  int _generationCount = 0;
+  static const int _maxGenerationsBeforeCleanup = 2;
+  
+  // Load model from file
+  Future<bool> loadModel(String modelFilePath) async {
+    // Verify file exists
+    final file = File(modelFilePath);
+    if (!await file.exists()) {
+      throw Exception('Model file does not exist');
+    }
+    
+    // Clean up existing resources
+    await _cleanupExistingModel();
+    
+    // Set model path
+    await _modelManager!.setModelPath(modelFilePath);
+    
+    // Get CPU/GPU preference
+    final prefs = await SharedPreferences.getInstance();
+    final useCPU = prefs.getBool('gemma_use_cpu') ?? true;
+    
+    // Create inference model with conservative settings
+    _inferenceModel = await _gemma!.createModel(
+      modelType: ModelType.gemmaIt,
+      preferredBackend: useCPU ? PreferredBackend.cpu : PreferredBackend.gpu,
+      maxTokens: 2048, // Reduced to save memory
+      supportImage: true, // Multimodal
+      maxNumImages: 1,
+    );
+    
+    return true;
+  }
+  
+  // Generate response (blocking)
+  Future<String> generateResponse({
+    required String prompt,
+    File? imageFile,
+    double temperature = 0.8,
+    int randomSeed = 1,
+    int topK = 1,
+  }) async {
+    // Create session
+    final session = await _inferenceModel!.createSession(
+      temperature: temperature,
+      randomSeed: randomSeed,
+      topK: topK,
+    );
+    
+    // Prepare message (with or without image)
+    Message message;
+    if (imageFile != null) {
+      final imageBytes = await _readImageWithSizeLimit(imageFile);
+      message = Message.withImage(
+        text: prompt,
+        imageBytes: imageBytes,
+        isUser: true,
+      );
+    } else {
+      message = Message.text(text: prompt, isUser: true);
+    }
+    
+    await session.addQueryChunk(message);
+    final response = await session.getResponse();
+    
+    // Memory cleanup
+    await session.close();
+    _generationCount++;
+    
+    if (_generationCount >= _maxGenerationsBeforeCleanup) {
+      await performMemoryCleanup();
+      _generationCount = 0;
+    }
+    
+    return response;
+  }
+  
+  // Memory management
+  Future<void> performMemoryCleanup() async {
+    if (_session != null) {
+      await _session!.close();
+      _session = null;
+    }
+    
+    // Force garbage collection
+    for (int i = 0; i < 3; i++) {
+      _forceGarbageCollection();
+      await Future.delayed(Duration(milliseconds: 100));
+    }
+  }
+}
+```
+
+#### 3. GemmaDownloadService
+
+**File:** `lib/services/gemma_download_service.dart` (553 lines)
+
+**Features:**
+- Download model from HuggingFace
+- Progress tracking with notifications
+- Pause/resume support
+- Background download notification
+
+**Model Details:**
+```dart
+static const String _modelUrl = 
+  'https://huggingface.co/AnsahMohammad/gemma-shots-studio/resolve/main/gemma-3n-E2B-it-int4.task?download=true';
+static const String _fileName = 'gemma-3n-E2B-it-int4.task';
+```
+
+**Size:** ~2.5GB (Int4 quantized)
+
+#### 4. GemmaAPIProvider (AI Service Integration)
+
+**File:** `lib/services/ai_service.dart`
+
+```dart
+class GemmaAPIProvider implements APIProvider {
+  final GemmaService _gemmaService = GemmaService();
+  
+  @override
+  bool canHandleModel(String modelName) {
+    return modelName.toLowerCase().contains('gemma');
+  }
+  
+  @override
+  Future<Map<String, dynamic>> makeRequest(
+    Map<String, dynamic> requestData,
+    AIConfig config,
+  ) async {
+    File? tempFile;
+    
+    try {
+      // Ensure model is ready
+      final isReady = await _gemmaService.ensureModelReady();
+      if (!isReady) {
+        return {
+          'error': 'Gemma model not loaded',
+          'statusCode': 400,
+        };
+      }
+      
+      // Extract prompt and image
+      final prompt = _extractPromptFromRequest(requestData);
+      tempFile = await _extractImageFromRequest(requestData);
+      
+      // Generate response
+      final response = await _gemmaService.generateResponse(
+        prompt: prompt,
+        imageFile: tempFile,
+        temperature: 0.8,
+      );
+      
+      // Check memory cleanup
+      if (_gemmaService.shouldPerformMemoryCleanup()) {
+        Future.delayed(Duration(milliseconds: 100), () {
+          _gemmaService.performMemoryCleanup();
+        });
+      }
+      
+      return {
+        'data': response,
+        'statusCode': 200,
+        'gemma_processing_time_ms': _gemmaService.lastProcessingTimeMs,
+        'gemma_model_name': _gemmaService.modelName,
+        'gemma_use_cpu': await _gemmaService.getUseCPUPreference(),
+      };
+    } finally {
+      // Clean up temp file
+      if (tempFile != null && await tempFile.exists()) {
+        await tempFile.delete();
+      }
+    }
+  }
+  
+  @override
+  Map<String, dynamic> prepareScreenshotAnalysisRequest({
+    required String prompt,
+    required List<Map<String, dynamic>> imageData,
+    Map<String, dynamic> additionalParams = const {},
+  }) {
+    // Gemma processes one image at a time
+    Map<String, dynamic>? firstImageData = 
+      imageData.isNotEmpty ? imageData.first : null;
+    
+    return {
+      'prompt': prompt,
+      'imageData': firstImageData,
+      'type': 'screenshot_analysis',
+      ...additionalParams,
+    };
+  }
+}
+```
+
+### Implementation Guide for LabLens
+
+#### Phase 1: Basic Setup (4-6 hours)
+
+**Step 1: Add Dependencies**
+
+```yaml
+# pubspec.yaml
+dependencies:
+  flutter_gemma: ^0.10.0
+  http: ^1.4.0
+  flutter_local_notifications: ^17.2.1
+```
+
+**Step 2: Create GemmaService**
+
+```dart
+// lib/services/ai/gemma_service.dart
+class GemmaService {
+  static GemmaService? _instance;
+  factory GemmaService() => _instance ??= GemmaService._internal();
+  GemmaService._internal();
+  
+  FlutterGemmaPlugin? _gemma;
+  InferenceModel? _inferenceModel;
+  bool _isModelLoaded = false;
+  
+  void initialize() {
+    _gemma = FlutterGemmaPlugin.instance;
+  }
+  
+  Future<bool> loadModel(String modelPath) async {
+    if (_gemma == null) initialize();
+    
+    final file = File(modelPath);
+    if (!await file.exists()) return false;
+    
+    await _gemma!.modelManager.setModelPath(modelPath);
+    
+    // Get CPU/GPU preference
+    final prefs = await SharedPreferences.getInstance();
+    final useCPU = prefs.getBool('use_cpu') ?? true;
+    
+    _inferenceModel = await _gemma!.createModel(
+      modelType: ModelType.gemmaIt,
+      preferredBackend: useCPU ? PreferredBackend.cpu : PreferredBackend.gpu,
+      maxTokens: 2048,
+      supportImage: true,
+      maxNumImages: 1,
+    );
+    
+    _isModelLoaded = true;
+    return true;
+  }
+  
+  Future<String> analyzeHealthReport({
+    required String prompt,
+    required File imageFile,
+  }) async {
+    if (!_isModelLoaded) {
+      throw StateError('Model not loaded');
+    }
+    
+    final session = await _inferenceModel!.createSession(
+      temperature: 0.1, // Lower for medical data
+      topK: 1,
+    );
+    
+    final imageBytes = await imageFile.readAsBytes();
+    final message = Message.withImage(
+      text: prompt,
+      imageBytes: imageBytes,
+      isUser: true,
+    );
+    
+    await session.addQueryChunk(message);
+    final response = await session.getResponse();
+    await session.close();
+    
+    return response;
+  }
+  
+  void dispose() {
+    _inferenceModel?.close();
+    _inferenceModel = null;
+    _isModelLoaded = false;
+  }
+}
+```
+
+**Step 3: Create Download Service**
+
+```dart
+// lib/services/ai/gemma_download_service.dart
+class GemmaDownloadService extends ChangeNotifier {
+  static const String modelUrl = 
+    'https://huggingface.co/google/gemma-2b-it/resolve/main/model.task';
+  
+  double _progress = 0.0;
+  DownloadStatus _status = DownloadStatus.idle;
+  
+  Future<String?> downloadModel(String savePath) async {
+    _status = DownloadStatus.downloading;
+    _progress = 0.0;
+    notifyListeners();
+    
+    try {
+      final response = await http.get(Uri.parse(modelUrl));
+      final bytes = response.bodyBytes;
+      final totalBytes = bytes.length;
+      
+      final file = File(savePath);
+      final sink = file.openWrite();
+      
+      int downloaded = 0;
+      for (int i = 0; i < totalBytes; i += 1024 * 1024) {
+        final end = min(i + 1024 * 1024, totalBytes);
+        sink.add(bytes.sublist(i, end));
+        
+        downloaded = end;
+        _progress = downloaded / totalBytes;
+        notifyListeners();
+      }
+      
+      await sink.close();
+      
+      _status = DownloadStatus.completed;
+      notifyListeners();
+      
+      return savePath;
+    } catch (e) {
+      _status = DownloadStatus.error;
+      notifyListeners();
+      return null;
+    }
+  }
+}
+
+enum DownloadStatus { idle, downloading, completed, error }
+```
+
+#### Phase 2: UI Integration (3-4 hours)
+
+**Settings Screen - Model Selection**
+
+```dart
+class AISettingsScreen extends StatefulWidget {
+  @override
+  _AISettingsScreenState createState() => _AISettingsScreenState();
+}
+
+class _AISettingsScreenState extends State<AISettingsScreen> {
+  final GemmaService _gemmaService = GemmaService();
+  final GemmaDownloadService _downloadService = GemmaDownloadService();
+  
+  String _aiProvider = 'gemini'; // or 'gemma'
+  bool _useCPU = true;
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('AI Settings')),
+      body: ListView(
+        children: [
+          // Provider selection
+          ListTile(
+            title: Text('AI Provider'),
+            subtitle: Text(_aiProvider == 'gemini' ? 'Cloud (Gemini)' : 'Local (Gemma)'),
+            trailing: DropdownButton<String>(
+              value: _aiProvider,
+              items: [
+                DropdownMenuItem(value: 'gemini', child: Text('Gemini (Cloud)')),
+                DropdownMenuItem(value: 'gemma', child: Text('Gemma (Local)')),
+              ],
+              onChanged: (value) {
+                setState(() => _aiProvider = value!);
+                _savePreference('ai_provider', value!);
+              },
+            ),
+          ),
+          
+          if (_aiProvider == 'gemma') ...[
+            Divider(),
+            
+            // CPU/GPU toggle
+            SwitchListTile(
+              title: Text('Use CPU'),
+              subtitle: Text('GPU is faster but uses more battery'),
+              value: _useCPU,
+              onChanged: (value) {
+                setState(() => _useCPU = value);
+                _savePreference('use_cpu', value);
+              },
+            ),
+            
+            // Download model button
+            ListTile(
+              title: Text('Download Gemma Model'),
+              subtitle: Text('~2.5GB - Required for local processing'),
+              trailing: _downloadService.status == DownloadStatus.completed
+                ? Icon(Icons.check_circle, color: Colors.green)
+                : Icon(Icons.download),
+              onTap: _downloadModel,
+            ),
+            
+            // Progress indicator
+            if (_downloadService.status == DownloadStatus.downloading)
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    LinearProgressIndicator(value: _downloadService.progress),
+                    SizedBox(height: 8),
+                    Text('${(_downloadService.progress * 100).toStringAsFixed(1)}%'),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _downloadModel() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final modelPath = '${dir.path}/gemma_model.task';
+    
+    final result = await _downloadService.downloadModel(modelPath);
+    
+    if (result != null) {
+      // Save model path
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('gemma_model_path', result);
+      
+      // Load model
+      await _gemmaService.loadModel(result);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Model downloaded and loaded successfully')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Download failed'), backgroundColor: Colors.red),
+      );
+    }
+  }
+}
+```
+
+#### Phase 3: Provider Abstraction (4-6 hours)
+
+**Create AI Provider Interface**
+
+```dart
+// lib/services/ai/ai_provider.dart
+abstract class AIProvider {
+  Future<Map<String, dynamic>> analyzeHealthReport(File file);
+  bool get isAvailable;
+  String get name;
+}
+
+// Gemini provider
+class GeminiProvider implements AIProvider {
+  final GeminiService _service = GeminiService();
+  
+  @override
+  String get name => 'Gemini (Cloud)';
+  
+  @override
+  bool get isAvailable => true; // Check API key
+  
+  @override
+  Future<Map<String, dynamic>> analyzeHealthReport(File file) async {
+    return await _service.extractBloodReportData(file);
+  }
+}
+
+// Gemma provider
+class GemmaProvider implements AIProvider {
+  final GemmaService _service = GemmaService();
+  
+  @override
+  String get name => 'Gemma (Local)';
+  
+  @override
+  bool get isAvailable => _service.isModelLoaded;
+  
+  @override
+  Future<Map<String, dynamic>> analyzeHealthReport(File file) async {
+    final prompt = _buildHealthReportPrompt();
+    final response = await _service.analyzeHealthReport(
+      prompt: prompt,
+      imageFile: file,
+    );
+    
+    // Parse JSON from response
+    final jsonData = _parseJsonFromResponse(response);
+    return jsonData;
+  }
+  
+  String _buildHealthReportPrompt() {
+    return '''
+Extract blood test parameters from the medical report image.
+
+Return JSON format:
+{
+  "test_date": "YYYY-MM-DD",
+  "lab_name": "Laboratory Name",
+  "parameters": {
+    "parameter_name": {
+      "value": 0.0,
+      "unit": "unit",
+      "ref_min": 0.0,
+      "ref_max": 0.0
+    }
+  }
+}
+
+Be precise with numeric values. Extract all visible parameters.
+''';
+  }
+}
+
+// Provider factory
+class AIProviderFactory {
+  static AIProvider getProvider(String providerName) {
+    switch (providerName) {
+      case 'gemini':
+        return GeminiProvider();
+      case 'gemma':
+        return GemmaProvider();
+      default:
+        return GeminiProvider();
+    }
+  }
+  
+  static Future<AIProvider> getCurrentProvider() async {
+    final prefs = await SharedPreferences.getInstance();
+    final providerName = prefs.getString('ai_provider') ?? 'gemini';
+    return getProvider(providerName);
+  }
+}
+```
+
+**Update Report Upload to Use Provider**
+
+```dart
+class ReportUploadScreen extends StatefulWidget {
+  // ... existing code ...
+  
+  Future<void> _analyzeReport(File file) async {
+    setState(() => _isAnalyzing = true);
+    
+    try {
+      // Get current provider
+      final provider = await AIProviderFactory.getCurrentProvider();
+      
+      if (!provider.isAvailable) {
+        throw Exception('${provider.name} is not available');
+      }
+      
+      // Analyze with selected provider
+      final data = await provider.analyzeHealthReport(file);
+      
+      // Navigate to results
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReportResultsScreen(data: data),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Analysis failed: $e')),
+      );
+    } finally {
+      setState(() => _isAnalyzing = false);
+    }
+  }
+}
+```
+
+### Considerations for LabLens
+
+#### Pros of Local Processing (Gemma)
+
+✅ **Privacy:** Medical data never leaves device  
+✅ **Offline:** Works without internet  
+✅ **Cost:** No API charges  
+✅ **Speed:** Fast on powerful devices  
+✅ **Compliance:** HIPAA-friendly (data stays local)
+
+#### Cons of Local Processing
+
+❌ **App Size:** +2.5GB model download  
+❌ **Device Requirements:** Needs 4GB+ RAM  
+❌ **Accuracy:** May be lower than Gemini 2.5  
+❌ **Battery:** High CPU/GPU usage  
+❌ **Complexity:** More code to maintain  
+❌ **Medical Data:** Gemma not trained specifically for medical reports
+
+#### Recommended Approach for LabLens
+
+**Hybrid Strategy:**
+
+1. **Default:** Gemini API (best accuracy for medical data)
+2. **Optional:** Gemma for privacy-conscious users
+3. **Settings:** Let users choose provider
+4. **Comparison:** Run both and compare (for testing)
+
+**Implementation Priority:**
+
+- **Phase 1 (Now):** Optimize Gemini implementation (this document)
+- **Phase 2 (Month 2):** Add JSON utils, error handling, batch processing
+- **Phase 3 (Month 3-4):** Add Gemma as optional alternative
+- **Phase 4 (Future):** Compare accuracy, let users choose
+
+### Model Recommendations
+
+**For Medical Data:**
+
+| Model | Best For | Accuracy | Speed | Cost |
+|-------|----------|----------|-------|------|
+| Gemini 2.5 Pro | Complex reports | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | High |
+| Gemini 2.5 Flash | Standard reports | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Low |
+| Gemma 3n (Local) | Privacy-focused | ⭐⭐⭐ | ⭐⭐⭐⭐ | Free |
+
+**Recommendation for LabLens:**  
+Start with **Gemini 2.5 Flash** (current), add **Gemma** as opt-in for privacy.
+
+### Testing Strategy
+
+```dart
+// Compare Gemini vs Gemma accuracy
+Future<void> testProviderAccuracy(File reportFile) async {
+  // Test with Gemini
+  final geminiProvider = GeminiProvider();
+  final geminiResult = await geminiProvider.analyzeHealthReport(reportFile);
+  
+  // Test with Gemma
+  final gemmaProvider = GemmaProvider();
+  final gemmaResult = await gemmaProvider.analyzeHealthReport(reportFile);
+  
+  // Compare results
+  print('Gemini parameters: ${geminiResult['parameters'].length}');
+  print('Gemma parameters: ${gemmaResult['parameters'].length}');
+  
+  // Check accuracy
+  final geminiParams = geminiResult['parameters'] as Map;
+  final gemmaParams = gemmaResult['parameters'] as Map;
+  
+  int matches = 0;
+  geminiParams.forEach((key, value) {
+    if (gemmaParams.containsKey(key)) {
+      final geminiValue = value['value'];
+      final gemmaValue = gemmaParams[key]['value'];
+      
+      if ((geminiValue - gemmaValue).abs() < 0.1) {
+        matches++;
+      }
+    }
+  });
+  
+  final accuracy = matches / geminiParams.length;
+  print('Gemma accuracy: ${(accuracy * 100).toStringAsFixed(1)}%');
+}
+```
+
+---
+
+**Document Version:** 1.1  
 **Last Updated:** November 1, 2025  
 **Status:** Ready for Implementation  
-**Estimated Total Implementation Time:** 24-36 hours for all improvements
+**Estimated Total Implementation Time:** 
+- Gemini Optimizations: 24-36 hours
+- Gemma Local Processing: 12-16 hours (optional)
