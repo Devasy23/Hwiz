@@ -1,4 +1,4 @@
-# Quick Start Guide - Health Analyzer
+# Quick Start Guide - LabLens
 
 ## 🎯 What You Have Now
 

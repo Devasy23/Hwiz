@@ -1,4 +1,4 @@
-# Health Analyzer - Architecture Diagrams
+# LabLens - Architecture Diagrams
 
 ## 📐 System Architecture
 
@@ -308,7 +308,7 @@ User selects: Profile="Father", Parameter="rbc_count"
 ```
 MaterialApp
 └── HomeScreen
-    ├── AppBar (Title: "Health Analyzer")
+    ├── AppBar (Title: "LabLens")
     ├── Body
     │   └── ProfileList
     │       ├── ProfileCard (Father)
