@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/app_drawer.dart';
 import 'home_tab.dart';
 import 'settings_tab.dart';
 
 /// Main shell with bottom navigation
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final Function(bool)? onAmoledModeChanged;
+  final Function(String)? onThemeChanged;
+
+  const MainShell({
+    super.key,
+    this.onAmoledModeChanged,
+    this.onThemeChanged,
+  });
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -13,14 +21,19 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  final List<Widget> _tabs = const [
-    HomeTab(),
-    SettingsTab(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final List<Widget> _tabs = [
+      const HomeTab(),
+      SettingsTab(
+        onAmoledModeChanged: widget.onAmoledModeChanged,
+        onThemeChanged: widget.onThemeChanged,
+      ),
+    ];
+
     return Scaffold(
+      // Enhanced navigation drawer with user info
+      drawer: const AppDrawer(),
       body: IndexedStack(
         index: _currentIndex,
         children: _tabs,

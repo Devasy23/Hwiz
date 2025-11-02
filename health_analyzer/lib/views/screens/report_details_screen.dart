@@ -4,6 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/theme_extensions.dart';
 import '../../models/blood_report.dart';
 import '../../models/parameter.dart';
+import '../../utils/page_transitions.dart';
 import '../../widgets/common/status_badge.dart';
 import '../../widgets/common/profile_avatar.dart';
 import '../../services/gemini_service.dart';
@@ -1146,9 +1147,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                   debugPrint('  ✅ Report deleted successfully');
                   // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Report deleted successfully'),
-                      backgroundColor: Colors.green,
+                    SnackBar(
+                      content: const Text('Report deleted successfully'),
+                      backgroundColor: Theme.of(context).colorScheme.tertiary,
                     ),
                   );
                   // Go back to report list
@@ -1165,7 +1166,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     SnackBar(
                       content:
                           Text(viewModel.error ?? 'Failed to delete report'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
                 }
@@ -1191,14 +1192,11 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     debugPrint('  Is PDF: $isPDF');
     debugPrint('  File exists: ${File(imagePath).existsSync()}');
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => _ReportImageViewer(
-          imagePath: imagePath,
-          isPDF: isPDF,
-          reportDate: widget.report.testDate,
-        ),
+    context.pushModal(
+      _ReportImageViewer(
+        imagePath: imagePath,
+        isPDF: isPDF,
+        reportDate: widget.report.testDate,
       ),
     );
   }
@@ -1306,6 +1304,15 @@ class _ReportImageViewer extends StatelessWidget {
               child: Image.file(
                 file,
                 fit: BoxFit.contain,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded) return child;
+                  return AnimatedOpacity(
+                    opacity: frame == null ? 0 : 1,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: child,
+                  );
+                },
                 errorBuilder: (context, error, stackTrace) {
                   debugPrint('❌ Error loading image: $error');
                   return const Center(

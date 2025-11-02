@@ -3,13 +3,22 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/theme_extensions.dart';
+import '../../theme/theme_manager.dart';
+import '../../utils/page_transitions.dart';
 import 'settings_screen.dart';
 import 'profile_list_screen.dart';
 import 'data_management_screen.dart';
 
 /// Settings tab - app configuration and preferences
 class SettingsTab extends StatelessWidget {
-  const SettingsTab({super.key});
+  final Function(bool)? onAmoledModeChanged;
+  final Function(String)? onThemeChanged;
+
+  const SettingsTab({
+    super.key,
+    this.onAmoledModeChanged,
+    this.onThemeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +26,15 @@ class SettingsTab extends StatelessWidget {
       backgroundColor: context.surfaceColor,
       appBar: AppBar(
         title: const Text('Settings'),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Open menu',
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
       ),
       body: ListView(
         children: [
@@ -28,12 +46,7 @@ class SettingsTab extends StatelessWidget {
                 'Manage Profiles',
                 'Add, edit, or remove family members',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileListScreen(),
-                    ),
-                  );
+                  context.pushHorizontal(const ProfileListScreen());
                 },
               ),
             ],
@@ -46,12 +59,7 @@ class SettingsTab extends StatelessWidget {
                 'Gemini API Key',
                 'Configure your AI API key',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  );
+                  context.pushHorizontal(const SettingsScreen());
                 },
               ),
             ],
@@ -64,12 +72,7 @@ class SettingsTab extends StatelessWidget {
                 'Export & Import Data',
                 'Export reports to CSV/JSON or import from backup',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DataManagementScreen(),
-                    ),
-                  );
+                  context.pushHorizontal(const DataManagementScreen());
                 },
               ),
               _buildTile(
@@ -87,14 +90,28 @@ class SettingsTab extends StatelessWidget {
             'App Preferences',
             [
               _buildTile(
-                Icons.brightness_6,
-                'Theme',
-                'System default',
+                Icons.palette_outlined,
+                'App Theme',
+                'Choose your favorite color theme',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Theme selector coming soon!'),
-                    ),
+                  _showThemeSelector(context);
+                },
+              ),
+              FutureBuilder<bool>(
+                future: ThemeManager.getAmoledMode(),
+                builder: (context, snapshot) {
+                  final isEnabled = snapshot.data ?? false;
+                  return SwitchListTile(
+                    secondary: const Icon(Icons.brightness_2),
+                    title: const Text('AMOLED Mode'),
+                    subtitle:
+                        const Text('Pure black background for dark theme'),
+                    value: isEnabled,
+                    onChanged: (value) {
+                      if (onAmoledModeChanged != null) {
+                        onAmoledModeChanged!(value);
+                      }
+                    },
                   );
                 },
               ),
@@ -206,6 +223,85 @@ class SettingsTab extends StatelessWidget {
     );
   }
 
+  void _showThemeSelector(BuildContext context) async {
+    final currentTheme = await ThemeManager.getSelectedTheme();
+    final themes = ThemeManager.getAvailableThemes();
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Theme'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: themes.length,
+            itemBuilder: (context, index) {
+              final themeName = themes[index];
+              final themeColor = ThemeManager.getThemeColor(themeName);
+              final isSelected = themeName == currentTheme;
+
+              return ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: themeColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
+                      width: 3,
+                    ),
+                  ),
+                  child: isSelected
+                      ? Icon(
+                          Icons.check,
+                          color: _getContrastColor(themeColor),
+                          size: 20,
+                        )
+                      : null,
+                ),
+                title: Text(themeName),
+                subtitle: themeName == 'Adaptive Theme'
+                    ? const Text('Uses system wallpaper colors')
+                    : null,
+                onTap: () {
+                  if (onThemeChanged != null) {
+                    onThemeChanged!(themeName);
+                  }
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Theme changed to $themeName'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getContrastColor(Color backgroundColor) {
+    // Calculate relative luminance
+    final luminance = backgroundColor.computeLuminance();
+    // Return white for dark colors, black for light colors
+    return luminance > 0.5 ? Colors.black : Colors.white;
+  }
+
   void _showClearDataDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -224,9 +320,9 @@ class SettingsTab extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Clear data feature coming soon!'),
-                  backgroundColor: Colors.orange,
+                SnackBar(
+                  content: const Text('Clear data feature coming soon!'),
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
                 ),
               );
             },
@@ -351,7 +447,7 @@ class SettingsTab extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.favorite, color: Colors.red),
+            Icon(Icons.favorite, color: Theme.of(context).colorScheme.error),
             const SizedBox(width: 8),
             const Text('About the Developer'),
           ],

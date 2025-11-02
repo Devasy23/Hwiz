@@ -48,6 +48,12 @@ dependencies:
   # Material 3 Dynamic Color (Material You)
   dynamic_color: ^1.7.0
   
+  # Shared Preferences for theme settings
+  shared_preferences: ^2.0.15
+  
+  # Page Transitions & Animations
+  animations: ^2.0.11
+  
   # CSV Export
   csv: ^6.0.0
   

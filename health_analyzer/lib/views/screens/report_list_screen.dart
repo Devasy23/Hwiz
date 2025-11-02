@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/report_viewmodel.dart';
 import '../../models/blood_report.dart';
+import '../../utils/page_transitions.dart';
+import '../../widgets/common/shimmer_loading.dart';
 import 'report_details_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -53,7 +55,14 @@ class _ReportListScreenState extends State<ReportListScreen> {
       body: Consumer<ReportViewModel>(
         builder: (context, viewModel, child) {
           if (viewModel.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: 5,
+              itemBuilder: (context, index) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ReportCardSkeleton(),
+              ),
+            );
           }
 
           if (viewModel.error != null) {
@@ -98,13 +107,16 @@ class _ReportListScreenState extends State<ReportListScreen> {
                 final report = viewModel.reports[index];
                 debugPrint(
                     '📄 Report #$index: ID=${report.id}, Params=${report.parameters.length}');
-                return _ReportCard(
-                  report: report,
-                  onTap: () {
-                    debugPrint('👆 Report card tapped: Report ID ${report.id}');
-                    _navigateToReportDetail(context, report);
-                  },
-                  onDelete: () => _showDeleteConfirmation(context, report),
+                return RepaintBoundary(
+                  child: _ReportCard(
+                    report: report,
+                    onTap: () {
+                      debugPrint(
+                          '👆 Report card tapped: Report ID ${report.id}');
+                      _navigateToReportDetail(context, report);
+                    },
+                    onDelete: () => _showDeleteConfirmation(context, report),
+                  ),
                 );
               },
             ),
@@ -157,25 +169,21 @@ class _ReportListScreenState extends State<ReportListScreen> {
     debugPrint('  Image Path: ${report.reportImagePath}');
 
     try {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) {
-            debugPrint('✅ Building ReportDetailsScreen...');
-            return ReportDetailsScreen(
-              report: report,
-              profileName: widget.profileName,
-            );
-          },
+      context
+          .pushVertical(
+        ReportDetailsScreen(
+          report: report,
+          profileName: widget.profileName,
         ),
-      ).then((value) {
+      )
+          .then((value) {
         debugPrint('🔙 Returned from ReportDetailsScreen');
       }).catchError((error) {
         debugPrint('❌ Navigation error: $error');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error opening report: $error'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       });
@@ -184,7 +192,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to open report: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }
@@ -216,9 +224,9 @@ class _ReportListScreenState extends State<ReportListScreen> {
 
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Report deleted'),
-                      backgroundColor: Colors.green,
+                    SnackBar(
+                      content: const Text('Report deleted'),
+                      backgroundColor: Theme.of(context).colorScheme.tertiary,
                     ),
                   );
                 }
@@ -226,7 +234,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(viewModel.error ?? 'Failed to delete report'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: Theme.of(context).colorScheme.error,
                   ),
                 );
               }
@@ -259,89 +267,104 @@ class _ReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              // Icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+    return PageTransitions.openContainer(
+      closedChild: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: InkWell(
+          onTap: () {}, // Placeholder, OpenContainer handles the action
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                // Icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.description,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 28,
+                  ),
                 ),
-                child: Icon(
-                  Icons.description,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Report info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatDate(report.testDate),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (report.labName != null)
+                const SizedBox(width: 16),
+                // Report info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        report.labName!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        _formatDate(report.testDate),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (report.labName != null)
+                        Text(
+                          report.labName!,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.6),
+                                  ),
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${report.parameters.length} parameters',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
+                                  .primary
+                                  .withOpacity(0.8),
                             ),
                       ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${report.parameters.length} parameters',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withOpacity(0.8),
-                          ),
+                    ],
+                  ),
+                ),
+                // Actions
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      onDelete();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.error),
+                          const SizedBox(width: 12),
+                          Text('Delete',
+                              style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error)),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              // Actions
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (value) {
-                  if (value == 'delete') {
-                    onDelete();
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 20, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('Delete', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+      ),
+      openBuilder: (context) => ReportDetailsScreen(report: report),
+      onClosed: () {}, // No action needed on close
+      closedColor: Theme.of(context).colorScheme.surface,
+      openColor: Theme.of(context).colorScheme.surface,
+      closedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
     );
   }

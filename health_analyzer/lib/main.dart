@@ -1,18 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'theme/app_theme.dart';
+import 'theme/theme_utils.dart';
+import 'theme/theme_manager.dart';
+import 'utils/display_utils.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/profile_viewmodel.dart';
 import 'viewmodels/report_viewmodel.dart';
 import 'views/screens/main_shell.dart';
 
-void main() {
+void main() async {
+  // Ensure Flutter binding is initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize high refresh rate detection and optimization (90Hz, 120Hz displays)
+  await DisplayUtils.initializeHighRefreshRate();
+
+  // Print display capabilities in debug mode
+  DisplayUtils.printDisplayCapabilities();
+
   runApp(const LabLensApp());
 }
 
-class LabLensApp extends StatelessWidget {
+class LabLensApp extends StatefulWidget {
   const LabLensApp({super.key});
+
+  @override
+  State<LabLensApp> createState() => _LabLensAppState();
+}
+
+class _LabLensAppState extends State<LabLensApp> {
+  bool _amoledModeEnabled = false;
+  String _selectedTheme = 'Adaptive Theme';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeSettings();
+  }
+
+  Future<void> _loadThemeSettings() async {
+    final amoledMode = await ThemeManager.getAmoledMode();
+    final selectedTheme = await ThemeManager.getSelectedTheme();
+    setState(() {
+      _amoledModeEnabled = amoledMode;
+      _selectedTheme = selectedTheme;
+    });
+  }
+
+  /// Update AMOLED mode setting
+  void updateAmoledMode(bool enabled) async {
+    await ThemeManager.setAmoledMode(enabled);
+    setState(() {
+      _amoledModeEnabled = enabled;
+    });
+  }
+
+  /// Update theme selection
+  void updateTheme(String themeName) async {
+    await ThemeManager.setSelectedTheme(themeName);
+    setState(() {
+      _selectedTheme = themeName;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,38 +74,41 @@ class LabLensApp extends StatelessWidget {
       ],
       child: DynamicColorBuilder(
         builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-          // Use dynamic colors from system if available (Android 12+)
-          // Otherwise fall back to custom brand colors
-          ColorScheme lightColorScheme;
-          ColorScheme darkColorScheme;
+          // Create color schemes based on selected theme and AMOLED mode
+          final (lightColorScheme, darkColorScheme) =
+              ThemeManager.createColorSchemes(
+            lightDynamic: lightDynamic,
+            darkDynamic: darkDynamic,
+            selectedTheme: _selectedTheme,
+            amoledModeEnabled: _amoledModeEnabled,
+          );
 
-          if (lightDynamic != null && darkDynamic != null) {
-            // Dynamic colors available - use Material You colors from system
-            // Harmonize with brand colors for consistent feel
-            lightColorScheme = lightDynamic.harmonized();
-            darkColorScheme = darkDynamic.harmonized();
-
+          // Log theme information in debug mode
+          if (_selectedTheme == 'Adaptive Theme' && lightDynamic != null) {
             debugPrint('🎨 Material You enabled - using dynamic colors');
             debugPrint('  Primary: ${lightDynamic.primary}');
             debugPrint('  Secondary: ${lightDynamic.secondary}');
           } else {
-            // Dynamic colors not available - use custom brand colors
-            lightColorScheme = AppTheme.lightColorScheme;
-            darkColorScheme = AppTheme.darkColorScheme;
+            debugPrint('🎨 Using custom theme: $_selectedTheme');
+          }
 
-            debugPrint('⚠️ Material You not available - using brand colors');
+          if (_amoledModeEnabled) {
+            debugPrint('🌙 AMOLED mode enabled');
           }
 
           return MaterialApp(
             title: 'LabLens',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme(lightColorScheme),
-            darkTheme: AppTheme.darkTheme(darkColorScheme),
+            theme: ThemeUtils.createLightTheme(lightColorScheme),
+            darkTheme: ThemeUtils.createDarkTheme(darkColorScheme),
             themeMode: ThemeMode.system,
             // Enable smooth theme transitions
             themeAnimationDuration: const Duration(milliseconds: 300),
             themeAnimationCurve: Curves.easeInOut,
-            home: const MainShell(),
+            home: MainShell(
+              onAmoledModeChanged: updateAmoledMode,
+              onThemeChanged: updateTheme,
+            ),
           );
         },
       ),

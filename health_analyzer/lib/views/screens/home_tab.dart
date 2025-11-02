@@ -6,10 +6,13 @@ import '../../viewmodels/report_viewmodel.dart';
 import '../../models/profile.dart';
 import '../../widgets/common/profile_avatar.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../widgets/common/expandable_fab.dart';
+import '../../widgets/common/shimmer_loading.dart';
 import '../widgets/profile_switcher_sheet.dart';
 import 'report_scan_screen.dart';
 import 'report_details_screen.dart';
 import 'compare_reports_screen.dart';
+import 'profile_list_screen.dart';
 
 /// Home tab - main view with profile content
 class HomeTab extends StatefulWidget {
@@ -78,6 +81,21 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  void _navigateToProfiles() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProfileListScreen(),
+      ),
+    );
+  }
+
+  void _navigateToCompareForCurrent() {
+    final profile = context.read<ProfileViewModel>().currentProfile;
+    if (profile != null) {
+      _navigateToCompare(profile);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,10 +139,35 @@ class _HomeTabState extends State<HomeTab> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToScan,
-        icon: const Icon(Icons.add),
-        label: const Text('Scan Report'),
+      floatingActionButton: Consumer<ProfileViewModel>(
+        builder: (context, profileVM, child) {
+          final hasProfile = profileVM.currentProfile != null;
+
+          return ExpandableFab(
+            child: const Icon(Icons.add),
+            actions: [
+              // Scan Report - Primary action
+              ExpandableFabAction(
+                icon: Icons.camera_alt,
+                label: 'Scan Report',
+                onPressed: _navigateToScan,
+              ),
+              // Compare Reports - if profile exists
+              if (hasProfile)
+                ExpandableFabAction(
+                  icon: Icons.compare_arrows,
+                  label: 'Compare',
+                  onPressed: _navigateToCompareForCurrent,
+                ),
+              // Manage Profiles
+              ExpandableFabAction(
+                icon: Icons.people,
+                label: 'Profiles',
+                onPressed: _navigateToProfiles,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -135,6 +178,16 @@ class _HomeTabState extends State<HomeTab> {
       color: Theme.of(context).colorScheme.surface,
       child: Row(
         children: [
+          // Drawer button
+          IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Open menu',
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+          const SizedBox(width: AppTheme.spacing8),
+
           // App logo/name
           Text(
             'LabLens',
@@ -211,7 +264,9 @@ class _HomeTabState extends State<HomeTab> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(AppTheme.spacing16),
-            child: _buildProfileSummaryCard(profile, reportVM),
+            child: reportVM.isLoading
+                ? ProfileSummarySkeleton()
+                : _buildProfileSummaryCard(profile, reportVM),
           ),
         ),
 
@@ -231,7 +286,20 @@ class _HomeTabState extends State<HomeTab> {
         ),
 
         // Reports List or Empty State
-        if (reportVM.reports.isEmpty)
+        if (reportVM.isLoading)
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacing16,
+                  vertical: AppTheme.spacing8,
+                ),
+                child: ReportCardSkeleton(),
+              ),
+              childCount: 3,
+            ),
+          )
+        else if (reportVM.reports.isEmpty)
           SliverFillRemaining(
             child: EmptyState(
               icon: Icons.description_outlined,
@@ -244,12 +312,14 @@ class _HomeTabState extends State<HomeTab> {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final report = reportVM.reports[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacing16,
-                    vertical: AppTheme.spacing8,
+                return RepaintBoundary(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacing16,
+                      vertical: AppTheme.spacing8,
+                    ),
+                    child: _buildReportCard(report),
                   ),
-                  child: _buildReportCard(report),
                 );
               },
               childCount: reportVM.reports.length,
