@@ -301,7 +301,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                   const SizedBox(width: AppTheme.spacing12),
                   Text(
                     widget.profileName!,
-                    style: AppTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ],
               ),

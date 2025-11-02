@@ -341,7 +341,7 @@ class SettingsTab extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('How to Use LabLens'),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Text(
             '📱 Getting Started\n\n'
             '1. Create Profile\n'
@@ -359,7 +359,7 @@ class SettingsTab extends StatelessWidget {
             '• Keep reports flat and in focus\n'
             '• All data is stored locally on your device\n'
             '• Regular updates help track health trends',
-            style: TextStyle(fontSize: 14),
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
         actions: [
@@ -377,7 +377,7 @@ class SettingsTab extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Privacy Policy'),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Text(
             'LabLens Privacy Policy\n\n'
             '1. Data Storage\n'
@@ -395,7 +395,7 @@ class SettingsTab extends StatelessWidget {
             'We do not collect usage analytics or personal information.\n\n'
             '6. Security\n'
             'We use industry-standard encryption for sensitive data storage.',
-            style: TextStyle(fontSize: 14),
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
         actions: [
@@ -456,17 +456,16 @@ class SettingsTab extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'LabLens',
-              style: TextStyle(
-                fontSize: 20,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Created with ❤️ by',
-              style: TextStyle(fontSize: 14),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
             Container(
@@ -500,10 +499,9 @@ class SettingsTab extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           '@Devasy23',
-                          style: TextStyle(
-                            fontSize: 16,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -522,14 +520,16 @@ class SettingsTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               '🚀 Open Source Contribution',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'This app is open source! Feel free to contribute, report issues, or suggest features on GitHub.',
-              style: TextStyle(fontSize: 14),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
             Row(
