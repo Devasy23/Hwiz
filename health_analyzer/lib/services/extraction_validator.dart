@@ -211,8 +211,23 @@ class ExtractionValidator {
         final refMax = param['ref_max'];
 
         if (refMin != null && refMax != null) {
+          final refMinNum = refMin as num;
+          final refMaxNum = refMax as num;
+
+          // Allow 0-0 range for certain cell types that can be absent
+          final allowZeroRange = [
+            'blast_cells_percentage',
+            'pro_myelocyte_percentage',
+            'myelocyte_percentage',
+            'meta_myelocyte_percentage',
+            'band_cells_percentage',
+            'basophil_percentage',
+          ].contains(canonical);
+
           // Check if min > max (definitely wrong)
-          if ((refMin as num) >= (refMax as num)) {
+          // Or min == max (unless both are 0 and it's an allowed parameter)
+          if (refMinNum > refMaxNum ||
+              (refMinNum == refMaxNum && !(allowZeroRange && refMinNum == 0))) {
             errors.add(
               'Invalid reference range for $canonical: min ($refMin) >= max ($refMax)',
             );
@@ -221,8 +236,8 @@ class ExtractionValidator {
           // Check against known ranges
           final dbRange =
               ReferenceRangeDatabase.getRangeForGender(canonical, null);
-          final refMinD = refMin.toDouble();
-          final refMaxD = refMax.toDouble();
+          final refMinD = refMinNum.toDouble();
+          final refMaxD = refMaxNum.toDouble();
 
           if (dbRange['min'] != null && dbRange['max'] != null) {
             final dbMin = dbRange['min']!;

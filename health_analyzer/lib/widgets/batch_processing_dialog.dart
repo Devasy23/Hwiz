@@ -108,9 +108,11 @@ class _BatchProcessingDialogState extends State<BatchProcessingDialog> {
           _isProcessing = false;
         });
 
-        // Auto-close after showing results (optional)
-        // await Future.delayed(const Duration(seconds: 2));
-        // if (mounted) Navigator.of(context).pop(result);
+        // Auto-close and return result after brief delay to show success
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (mounted && !_isCancelling) {
+          Navigator.of(context).pop(result);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -128,19 +130,29 @@ class _BatchProcessingDialogState extends State<BatchProcessingDialog> {
     try {
       final db = await DatabaseHelper.instance.database;
 
+      debugPrint('💾 Saving report to database...');
+      debugPrint('   Profile ID: ${report.profileId}');
+      debugPrint('   Test Date: ${report.testDate}');
+      debugPrint('   Parameters: ${report.parameters.length}');
+
       // Insert report
       final reportId = await db.insert('reports', report.toMap());
 
       // Insert parameters
+      int paramCount = 0;
       for (final param in report.parameters) {
         final paramMap = param.toMap();
         paramMap['report_id'] = reportId;
         await db.insert('blood_parameters', paramMap);
+        paramCount++;
       }
 
-      debugPrint('✅ Report saved to database with ID: $reportId');
-    } catch (e) {
+      debugPrint('✅ Report saved successfully!');
+      debugPrint('   Report ID: $reportId');
+      debugPrint('   Parameters saved: $paramCount');
+    } catch (e, stackTrace) {
       debugPrint('❌ Error saving report: $e');
+      debugPrint('   Stack trace: $stackTrace');
     }
   }
 
@@ -164,7 +176,13 @@ class _BatchProcessingDialogState extends State<BatchProcessingDialog> {
     final progress = total > 0 ? _processed / total : 0.0;
 
     return PopScope(
-      canPop: !_isProcessing,
+      canPop: false, // Always prevent back button dismissal
+      onPopInvokedWithResult: (didPop, result) {
+        // Only allow programmatic close with result
+        if (!didPop && !_isProcessing && _result != null) {
+          Navigator.of(context).pop(_result);
+        }
+      },
       child: Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),

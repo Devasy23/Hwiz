@@ -59,7 +59,7 @@ class GeminiService {
         content,
         generationConfig: GenerationConfig(
           temperature: 0.1, // Low temperature for consistent output
-          maxOutputTokens: 4096, // Increased token limit
+          maxOutputTokens: 8192, // Increased token limit for large reports
         ),
       );
 
@@ -68,8 +68,23 @@ class GeminiService {
         throw Exception('No data extracted from the report');
       }
 
-      debugPrint('🔍 Raw Gemini Response:');
+      debugPrint(
+          '🔍 Raw Gemini Response (length: ${extractedText.length} chars):');
       debugPrint(extractedText);
+
+      // Check if response was likely truncated
+      if (response.candidates.isNotEmpty) {
+        final finishReason = response.candidates.first.finishReason;
+        if (finishReason == FinishReason.maxTokens) {
+          debugPrint(
+              '⚠️ WARNING: Response truncated due to max token limit. Report may have too many parameters.');
+          throw Exception(
+              'Report is too large to process in one request. This report contains many parameters. Please try:\n'
+              '1. Scanning only the essential pages\n'
+              '2. Breaking the report into smaller sections\n'
+              '3. Using a higher-tier Gemini model with larger token limits');
+        }
+      }
 
       // Parse JSON from response with better error handling
       final jsonData = _parseJsonFromResponse(extractedText);
@@ -81,7 +96,15 @@ class GeminiService {
     } on FormatException catch (e) {
       debugPrint('❌ JSON Parse Error: $e');
       throw Exception(
-          'Failed to parse data from report. The AI response was incomplete. Please try again with a clearer image.');
+          'Failed to parse data from report. The AI response was incomplete or malformed.\n'
+          'This usually happens when:\n'
+          '- The report has too many parameters (token limit exceeded)\n'
+          '- The image quality is poor\n'
+          '- The report format is complex\n\n'
+          'Please try:\n'
+          '1. Scanning fewer pages at once\n'
+          '2. Using a clearer/higher quality image\n'
+          '3. Upgrading to gemini-1.5-pro model (higher token limit)');
     } catch (e) {
       debugPrint('❌ Extraction Error: $e');
       throw Exception('Failed to extract data from report: ${e.toString()}');
@@ -95,17 +118,18 @@ You are an expert medical document analyzer. Extract all blood test parameters f
 
 CRITICAL INSTRUCTIONS:
 1. Return ONLY valid JSON, no other text or markdown
-2. Normalize ALL parameter names to lowercase with underscores
-3. Extract ALL visible parameters with their values, units, and reference ranges
-4. Handle multi-page reports by merging duplicate parameters (don't add _page2 suffix)
-5. Look carefully for reference ranges - they may be in separate columns or rows
+2. **KEEP OUTPUT COMPACT** - Use minimal whitespace in JSON
+3. Normalize ALL parameter names to lowercase with underscores
+4. Extract ALL visible parameters with their values, units, and reference ranges
+5. Handle multi-page reports by merging duplicate parameters (don't add _page2 suffix)
+6. For duplicate parameters with different values, keep the one with more complete data
 
 REQUIRED FIELDS FOR EACH PARAMETER:
 - value: numeric value only (no units, no text)
 - unit: the unit of measurement exactly as shown
 - ref_min: minimum reference range (MUST extract if visible)
 - ref_max: maximum reference range (MUST extract if visible)
-- raw_name: the exact parameter name as written in the report
+- raw_name: the exact parameter name as written in the report (SHORT version)
 
 TOP-LEVEL FIELDS:
 - test_date: in YYYY-MM-DD format (look for "Date", "Test Date", "Collection Date")

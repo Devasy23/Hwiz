@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'gemini_service.dart';
 import 'extraction_validator.dart';
 import 'parameter_alias_resolver.dart';
+import 'background_batch_processor.dart';
 import '../models/parameter.dart';
 import '../models/blood_report.dart';
 
@@ -43,11 +44,11 @@ import '../models/blood_report.dart';
 /// ```
 class BatchProcessingService {
   final GeminiService _geminiService = GeminiService();
+  final BackgroundBatchProcessor _backgroundProcessor =
+      BackgroundBatchProcessor();
 
   bool _isCancelled = false;
-  Timer? _rateLimitTimer;
-
-  // Gemini API rate limits (per minute)
+  Timer? _rateLimitTimer; // Gemini API rate limits (per minute)
   // gemini-2.5-flash: 15 RPM (requests per minute) for free tier
   // gemini-2.5-pro: 2 RPM for free tier
   static const int _defaultMaxParallel = 4;
@@ -118,7 +119,7 @@ class BatchProcessingService {
       // Wait for rate limit if needed
       await _checkRateLimit(batch.length);
 
-      // Process batch in parallel
+      // Process batch in parallel with error isolation
       final batchFutures = batch.map((file) async {
         if (_isCancelled) {
           return _BatchResult(
@@ -131,15 +132,30 @@ class BatchProcessingService {
         onProgress?.call(
             successful.length + failed.length, files.length, fileName);
 
-        return await _processFileWithRetry(
-          file: file,
-          profileId: profileId,
-          gender: gender,
-          maxRetries: maxRetries,
-        );
+        try {
+          return await _processFileWithRetry(
+            file: file,
+            profileId: profileId,
+            gender: gender,
+            maxRetries: maxRetries,
+          );
+        } catch (e, stackTrace) {
+          // Safety catch for any unhandled errors
+          debugPrint('❌ Unexpected error processing $fileName: $e');
+          debugPrint('   Stack trace: $stackTrace');
+          return _BatchResult(
+            file: file,
+            error: 'Unexpected error: ${e.toString()}',
+            attempts: 1,
+          );
+        }
       });
 
-      final batchResults = await Future.wait(batchFutures);
+      final batchResults = await Future.wait(
+        batchFutures,
+        eagerError:
+            false, // Don't stop processing on first error - continue with remaining files
+      );
 
       // Categorize results and trigger callbacks
       for (final result in batchResults) {
@@ -187,6 +203,27 @@ class BatchProcessingService {
       cancelled: _isCancelled,
       startTime: startTime,
       endTime: endTime,
+    );
+  }
+
+  /// Process reports in background with optimized performance
+  /// Uses background isolates for large batches (>5 files)
+  /// Falls back to optimized in-memory processing for small batches
+  Stream<ProcessingUpdate> processReportsInBackground({
+    required List<File> files,
+    required int profileId,
+    String? gender,
+    int maxParallel = _defaultMaxParallel,
+    int maxRetries = 2,
+  }) {
+    _isCancelled = false;
+
+    return _backgroundProcessor.processInBackground(
+      files: files,
+      profileId: profileId,
+      gender: gender,
+      maxParallel: maxParallel,
+      maxRetries: maxRetries,
     );
   }
 
@@ -257,7 +294,8 @@ class BatchProcessingService {
           attempts: attempts,
         );
       } catch (e) {
-        lastException = e as Exception?;
+        // Don't cast - just store the error object
+        lastException = e is Exception ? e : Exception(e.toString());
         debugPrint('      ❌ Error: $e');
 
         if (attempts < maxRetries) {
@@ -286,13 +324,51 @@ class BatchProcessingService {
     for (final entry in parameters.entries) {
       final paramData = entry.value as Map<String, dynamic>;
 
+      // Skip parameters with null values
+      if (paramData['value'] == null) {
+        debugPrint('⚠️ Skipping parameter ${entry.key}: null value');
+        continue;
+      }
+
+      // Skip parameters with non-numeric values (like "Nil", "Negative", etc.)
+      if (paramData['value'] is! num) {
+        debugPrint(
+            '⚠️ Skipping parameter ${entry.key}: non-numeric value "${paramData['value']}"');
+        continue;
+      }
+
+      // Convert value to double (handles both int and double from JSON)
+      final value = (paramData['value'] as num).toDouble();
+
+      // Convert reference ranges to double if present (skip if not numeric)
+      double? refMin;
+      double? refMax;
+
+      if (paramData['ref_min'] != null) {
+        if (paramData['ref_min'] is num) {
+          refMin = (paramData['ref_min'] as num).toDouble();
+        } else {
+          debugPrint(
+              '⚠️ Non-numeric ref_min for ${entry.key}: ${paramData['ref_min']}');
+        }
+      }
+
+      if (paramData['ref_max'] != null) {
+        if (paramData['ref_max'] is num) {
+          refMax = (paramData['ref_max'] as num).toDouble();
+        } else {
+          debugPrint(
+              '⚠️ Non-numeric ref_max for ${entry.key}: ${paramData['ref_max']}');
+        }
+      }
+
       // Get or fill reference ranges
       final enhanced = ParameterAliasResolver.getCanonicalWithRanges(
         entry.key,
-        paramData['value'],
+        value,
         paramData['unit'],
-        existingMin: paramData['ref_min'],
-        existingMax: paramData['ref_max'],
+        existingMin: refMin,
+        existingMax: refMax,
         gender: gender,
       );
 
@@ -345,6 +421,7 @@ class BatchProcessingService {
   void cancel() {
     debugPrint('🛑 Cancelling batch processing...');
     _isCancelled = true;
+    _backgroundProcessor.cancel();
     _rateLimitTimer?.cancel();
   }
 
