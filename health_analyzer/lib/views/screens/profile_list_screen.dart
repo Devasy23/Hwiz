@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../models/profile.dart';
+import '../../utils/page_transitions.dart';
 import 'profile_form_screen.dart';
 import 'report_list_screen.dart';
 import '../widgets/profile_card.dart';
@@ -85,15 +86,17 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
               itemCount: viewModel.profiles.length,
               itemBuilder: (context, index) {
                 final profile = viewModel.profiles[index];
-                return ProfileCard(
-                  profile: profile,
-                  isSelected: viewModel.selectedProfile?.id == profile.id,
-                  onTap: () {
-                    viewModel.selectProfile(profile);
-                    _showProfileDetails(context, profile);
-                  },
-                  onEdit: () => _navigateToEditProfile(context, profile),
-                  onDelete: () => _showDeleteConfirmation(context, profile),
+                return RepaintBoundary(
+                  child: ProfileCard(
+                    profile: profile,
+                    isSelected: viewModel.selectedProfile?.id == profile.id,
+                    onTap: () {
+                      viewModel.selectProfile(profile);
+                      _showProfileDetails(context, profile);
+                    },
+                    onEdit: () => _navigateToEditProfile(context, profile),
+                    onDelete: () => _showDeleteConfirmation(context, profile),
+                  ),
                 );
               },
             ),
@@ -153,11 +156,8 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   }
 
   Future<void> _navigateToAddProfile(BuildContext context) async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ProfileFormScreen(),
-      ),
+    final result = await context.pushVertical<bool>(
+      const ProfileFormScreen(),
     );
 
     if (result == true && mounted) {
@@ -170,11 +170,8 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
     BuildContext context,
     Profile profile,
   ) async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfileFormScreen(profile: profile),
-      ),
+    final result = await context.pushVertical<bool>(
+      ProfileFormScreen(profile: profile),
     );
 
     if (result == true && mounted) {
@@ -214,7 +211,7 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
                         height: 4,
                         margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                          color: Theme.of(context).colorScheme.outlineVariant,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -228,9 +225,9 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
                               Theme.of(context).colorScheme.primary,
                           child: Text(
                             profile.name[0].toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 32,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                         ),
@@ -292,14 +289,14 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
                         icon: Icons.description,
                         label: 'Total Reports',
                         value: '${snapshot.data!.totalReports}',
-                        color: Colors.blue,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(height: 8),
                       _StatCard(
                         icon: Icons.science,
                         label: 'Parameters Tracked',
                         value: '${snapshot.data!.uniqueParameters}',
-                        color: Colors.green,
+                        color: Theme.of(context).colorScheme.tertiary,
                       ),
                       if (snapshot.data!.latestReportDate != null) ...[
                         const SizedBox(height: 8),
@@ -307,7 +304,7 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
                           icon: Icons.update,
                           label: 'Last Report',
                           value: _formatDate(snapshot.data!.latestReportDate!),
-                          color: Colors.orange,
+                          color: Theme.of(context).colorScheme.secondary,
                         ),
                       ],
                     ],
@@ -329,16 +326,35 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () {
+                              debugPrint('🔵 "View Reports" button tapped');
+                              debugPrint('  Profile ID: ${profile.id}');
+                              debugPrint('  Profile Name: ${profile.name}');
                               Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ReportListScreen(
+                              try {
+                                context
+                                    .pushVertical(
+                                  ReportListScreen(
                                     profileId: profile.id!,
                                     profileName: profile.name,
                                   ),
-                                ),
-                              );
+                                )
+                                    .then((value) {
+                                  debugPrint(
+                                      '🔙 Returned from ReportListScreen');
+                                }).catchError((error) {
+                                  debugPrint('❌ Navigation error: $error');
+                                });
+                              } catch (e) {
+                                debugPrint(
+                                    '❌ Exception navigating to reports: $e');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error: $e'),
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.error,
+                                  ),
+                                );
+                              }
                             },
                             icon: const Icon(Icons.assessment),
                             label: const Text('View Reports'),
@@ -381,7 +397,7 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${profile.name}\'s profile deleted'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: Theme.of(context).colorScheme.tertiary,
                   ),
                 );
               }

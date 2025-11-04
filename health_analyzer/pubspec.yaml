@@ -1,6 +1,6 @@
-name: health_analyzer
-description: A Flutter app to analyze and track blood report trends over time
-version: 1.0.0+1
+name: Lablens
+description: LabLens - Your Family's Health, Tracked & Analyzed
+version: 1.0.1+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -45,6 +45,24 @@ dependencies:
   # PDF Viewer
   syncfusion_flutter_pdfviewer: ^31.2.2
   
+  # Material 3 Dynamic Color (Material You)
+  dynamic_color: ^1.7.0
+  
+  # Shared Preferences for theme settings
+  shared_preferences: ^2.0.15
+  
+  # Page Transitions & Animations
+  animations: ^2.0.11
+  
+  # CSV Export
+  csv: ^6.0.0
+  
+  # Share/Export Files
+  share_plus: ^10.1.4
+  
+  # URL Launcher
+  url_launcher: ^6.3.1
+  
   # UI Components
   cupertino_icons: ^1.0.6
 
@@ -55,6 +73,14 @@ dev_dependencies:
   build_runner: ^2.4.7
   json_serializable: ^6.7.1
   mockito: ^5.4.4
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"

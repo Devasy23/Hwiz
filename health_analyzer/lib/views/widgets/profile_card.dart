@@ -51,10 +51,10 @@ class ProfileCard extends StatelessWidget {
                   child: profile.photoPath == null
                       ? Text(
                           profile.name[0].toUpperCase(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         )
                       : null,
@@ -158,13 +158,17 @@ class ProfileCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete, size: 20, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('Delete', style: TextStyle(color: Colors.red)),
+                        Icon(Icons.delete,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.error),
+                        const SizedBox(width: 12),
+                        Text('Delete',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error)),
                       ],
                     ),
                   ),
@@ -178,17 +182,16 @@ class ProfileCard extends StatelessWidget {
   }
 
   Color _getAvatarColor(BuildContext context) {
-    // Generate color based on name hash
+    // Generate color based on name hash using Material You color palette
     final hash = profile.name.hashCode;
+    final theme = Theme.of(context);
     final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.indigo,
-      Colors.amber,
+      theme.colorScheme.primary,
+      theme.colorScheme.secondary,
+      theme.colorScheme.tertiary,
+      theme.colorScheme.primaryContainer,
+      theme.colorScheme.secondaryContainer,
+      theme.colorScheme.tertiaryContainer,
     ];
     return colors[hash.abs() % colors.length];
   }
